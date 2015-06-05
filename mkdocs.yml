@@ -1,0 +1,9 @@
+site_name: kungpao
+repo_url: https://github.com/rjonnal/kungpao
+site_url: https://github.com/rjonnal/kungpao
+repo_name: 'GitHub'
+pages:
+- 'Introduction': 'index.md'
+- 'User Guide': 'user-guide.md'
+- 'About': 'about.md'
+
