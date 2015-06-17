@@ -20,21 +20,13 @@ from types import *
 from glob import glob
 import scipy
 
-class AOCamera:
+
+class Camera:
     """A template for subclassing AO camera classes.
     """
-    _integrationTimeS = 0.0
-    _fps = 0.0
-    _xSizePx = 1
-    _ySizePx = 1
-    _im = np.zeros([_ySizePx,_xSizePx]).astype(np.uint16)
-    _im_ptr = _im.ctypes.data
-    _binningPx = 2.0
-    _physicalPixelSizeM = 12.0e-6
-    _pixelSizeM = _physicalPixelSizeM * _binningPx
-
-    def updateImage(self):
-        """Updates this object's _im array. Can be implemented in a variety
+    
+    def grab(self):
+        """Updates this object's image. Can be implemented in a variety
         of ways, depending on hardware (using the camera's API, in combination
         with ctypes (see :mod:`pyao.cameras.AOCameraMatrox`) or by reading 
         images from the disk (see :mod:`pyao.cameras.AOCameraSim`), for 
@@ -45,8 +37,7 @@ class AOCamera:
         Kwargs:
             none
         Returns:
-            None
-
+            
         """
         pass
 
