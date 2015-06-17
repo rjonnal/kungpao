@@ -1,0 +1,575 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kungpao.cameras &mdash; kungpao 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="kungpao 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for kungpao.cameras</h1><div class="highlight"><pre>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">.. module:: cameras</span>
+<span class="sd">   :platform: Windows, Linux, Mac</span>
+<span class="sd">   :synopsis: Provides an interface to the wavefront sensor&#39;s camera.</span>
+
+<span class="sd">.. moduleauthor:: Ravi S. Jonnal &lt;rjonnal@gmail.com&gt;</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">ctypes.util</span> <span class="kn">import</span> <span class="n">find_library</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span><span class="n">ifft</span><span class="p">,</span><span class="n">fft2</span><span class="p">,</span><span class="n">ifft2</span><span class="p">,</span><span class="n">fftshift</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span><span class="p">,</span><span class="n">sleep</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
+<span class="kn">import</span> <span class="nn">scipy</span>
+
+<span class="c"># import milc</span>
+<span class="c"># from utils import *</span>
+<span class="c"># from settings import dcfPath,dataPath</span>
+<span class="c"># import pyao_config</span>
+
+
+<div class="viewcode-block" id="Camera"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera">[docs]</a><span class="k">class</span> <span class="nc">Camera</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;A template for subclassing AO camera classes.</span>
+<span class="sd">    A the functions `grab` and</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+<div class="viewcode-block" id="Camera.grab"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.grab">[docs]</a>    <span class="k">def</span> <span class="nf">grab</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Updates this object&#39;s image. Can be implemented in a variety</span>
+<span class="sd">        of ways, depending on hardware (using the camera&#39;s API, in combination</span>
+<span class="sd">        with ctypes (see :mod:`pyao.cameras.AOCameraMatrox`) or by reading </span>
+<span class="sd">        images from the disk (see :mod:`pyao.cameras.AOCameraSim`), for </span>
+<span class="sd">        example.)</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+<div class="viewcode-block" id="Camera.getImage"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getImage">[docs]</a>    <span class="k">def</span> <span class="nf">getImage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Calls this object&#39;s updateImage() and gets its _im array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            numpy.ndarray of type numpy.uint16, the image</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">updateImage</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_im</span>
+</div>
+<div class="viewcode-block" id="Camera.getImagePtr"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getImagePtr">[docs]</a>    <span class="k">def</span> <span class="nf">getImagePtr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gets a pointer to this object&#39;s _im array.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            ctypes pointer, reference to the image</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_im_ptr</span>
+</div>
+<div class="viewcode-block" id="Camera.getShape"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getShape">[docs]</a>    <span class="k">def</span> <span class="nf">getShape</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gets this object&#39;s shape. For example:</span>
+
+<span class="sd">            &gt;&gt;&gt; imHeight,imWidth = cam.getShape()</span>
+<span class="sd">            &gt;&gt;&gt; print imHeight</span>
+<span class="sd">            512</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple containing height,width of image</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_im</span><span class="o">.</span><span class="n">shape</span>
+</div>
+<div class="viewcode-block" id="Camera.getIntegrationTime"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getIntegrationTime">[docs]</a>    <span class="k">def</span> <span class="nf">getIntegrationTime</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gets this object&#39;s integration time, in seconds.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            float, integration time in seconds</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_integrationTimeS</span>
+</div>
+<div class="viewcode-block" id="Camera.getPixelSize"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getPixelSize">[docs]</a>    <span class="k">def</span> <span class="nf">getPixelSize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Gets this object&#39;s physical pixel size, in meters.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            float, size of binned pixel in meters</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pixelSizeM</span>
+</div>
+<div class="viewcode-block" id="Camera.close"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.close">[docs]</a>    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Close this camera interface.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            none</span>
+<span class="sd">        Kwargs:</span>
+<span class="sd">            none</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">pass</span>
+</div>
+    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">filename</span><span class="p">):</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">_im</span><span class="p">)</span>
+
+
+<span class="c"># class AOCameraSim(AOCamera):</span>
+<span class="c">#     &quot;&quot;&quot;A class representing a simulated camera&quot;&quot;&quot;</span>
+    
+<span class="c">#     _physicalPixelSizeM = 12.0e-6</span>
+<span class="c">#     _binningPx = 2.0</span>
+<span class="c">#     _pixelSizeM = _physicalPixelSizeM * _binningPx</span>
+<span class="c">#     _imageindex = -1</span>
+
+
+<span class="c">#     def __init__(self,noisy=False,binning=1,dataPathIn=None,nImages=None):</span>
+<span class="c">#         if dataPathIn is None:</span>
+<span class="c">#             self.dataPath = dataPath</span>
+<span class="c">#         else:</span>
+<span class="c">#             self.dataPath = dataPathIn</span>
+
+<span class="c">#         self._noisy = noisy</span>
+<span class="c">#         self.binning = binning</span>
+<span class="c">#         self.nImages = nImages</span>
+<span class="c">#         self.loadImages()</span>
+        
+<span class="c">#     def loadImages(self):</span>
+<span class="c">#         imfnlist = glob(os.path.join(self.dataPath,&#39;*.npy&#39;))</span>
+<span class="c">#         if self.nImages is None:</span>
+<span class="c">#             imfnlist = sorted(imfnlist)</span>
+<span class="c">#         else:</span>
+<span class="c">#             imfnlist = sorted(imfnlist)[:self.nImages]</span>
+
+<span class="c">#         self.ims = []</span>
+<span class="c">#         for imfn in imfnlist:</span>
+<span class="c">#             print &#39;AOCameraSim: loading %s&#39;%imfn</span>
+<span class="c">#             im = np.load(imfn).astype(np.int16)</span>
+<span class="c">#             self.ims.append(im)</span>
+
+<span class="c">#     def updateImage1(self):</span>
+<span class="c">#         self._imageindex = (self._imageindex + 1)%20</span>
+<span class="c">#         fn = dataPath+&#39;im_%02d.npy&#39;%self._imageindex</span>
+<span class="c">#         self._im = np.load(fn)</span>
+
+<span class="c">#     def updateImage(self):</span>
+<span class="c">#         self._imageindex = (self._imageindex + 1)%len(self.ims)</span>
+<span class="c">#         # Important: when assigning one of the images from the image list,</span>
+<span class="c">#         # make sure to copy it, otherwise the &#39;original&#39;, in the list,</span>
+<span class="c">#         # will be modified after any in-place operations.</span>
+<span class="c">#         self._im = self.ims[self._imageindex].copy()</span>
+<span class="c">#         if self._noisy:</span>
+<span class="c">#             # coarse shot noise simulation:</span>
+<span class="c">#             self._im = self._im + (np.random.randn(*(self._im.shape))*np.sqrt(self._im)).astype(np.int16)</span>
+
+
+<span class="c"># class AOCameraAce(AOCamera):</span>
+
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraBinningPx</span>
+<span class="c">#         if type(val)!=IntType:</span>
+<span class="c">#             raise Exception(&#39;cameraBinningPx should be an integer&#39;)</span>
+<span class="c">#         _binningPx = float(val)</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraPixelSizeM</span>
+<span class="c">#         if type(val)!=FloatType:</span>
+<span class="c">#             raise Exception(&#39;cameraPixelSizeM should be a float&#39;)</span>
+<span class="c">#         _physicalPixelSizeM = val</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+<span class="c">#     _physicalPixelSizeM = pyao_config.cameraPixelSizeM</span>
+
+<span class="c">#     _pixelSizeM = _physicalPixelSizeM * _binningPx</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraFilename</span>
+<span class="c">#         if type(val)!=StringType:</span>
+<span class="c">#             raise Exception(&#39;cameraFilename should be a string&#39;)</span>
+<span class="c">#         _cameraFilename = val</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+
+<span class="c">#     _MilImage0 = c_longlong(0)</span>
+<span class="c">#     _MilImage1 = c_longlong(0)</span>
+<span class="c">#     _InitFlag = c_longlong(milc.M_PARTIAL)</span>
+<span class="c">#     #_InitFlagD = c_longlong(milc.M_DEFAULT)</span>
+
+
+<span class="c">#     _MilApplication = c_longlong()</span>
+<span class="c">#     _MilSystem = c_longlong()</span>
+<span class="c">#     _MilDigitizer = c_longlong()</span>
+<span class="c">#     _MilImage0 = c_longlong()</span>
+<span class="c">#     _MilImage1 = c_longlong()</span>
+
+<span class="c">#     def __init__(self,mode=0,binning=pyao_config.cameraBinningPx):</span>
+
+
+<span class="c">#         if sys.platform==&#39;win32&#39;:</span>
+<span class="c">#             self._mil = windll.LoadLibrary(&quot;mil&quot;)</span>
+<span class="c">#         else:</span>
+<span class="c">#             sys.exit(&#39;pyao.cameras assumes Windows DLL shared libraries&#39;)</span>
+
+
+
+<span class="c">#         self._mode = mode</span>
+
+<span class="c">#         self._mil.MappAllocW.argtypes = [c_longlong, POINTER(c_longlong)] </span>
+<span class="c">#         self._mil.MsysAllocW.argtypes = [c_wchar_p, c_longlong, c_longlong, POINTER(c_longlong)]</span>
+<span class="c">#         self._mil.MdigAllocW.argtypes = [c_longlong, c_longlong, c_wchar_p, c_longlong, POINTER(c_longlong)]</span>
+<span class="c">#         self._mil.MbufAllocColor.argtypes = [c_longlong, c_longlong, c_longlong, c_longlong, c_longlong, c_longlong, POINTER(c_longlong)]</span>
+
+<span class="c">#         self._mil.MappAllocW(self._InitFlag,byref(self._MilApplication))</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         print &#39;MIL App Identifier: %d&#39;%self._MilApplication.value</span>
+
+<span class="c">#         cSystemName = c_wchar_p(&#39;M_SYSTEM_SOLIOS&#39;)</span>
+<span class="c">#         self._mil.MsysAllocW(cSystemName, milc.M_DEFAULT, </span>
+<span class="c">#                            self._InitFlag, byref(self._MilSystem))</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         print &#39;MIL Sys Identifier: %d&#39;%self._MilSystem.value</span>
+
+        
+<span class="c">#         cDcfFn = c_wchar_p(self._cameraFilename)</span>
+<span class="c">#         print self._cameraFilename</span>
+
+<span class="c">#         self._mil.MdigAllocW(self._MilSystem, milc.M_DEFAULT, cDcfFn, milc.M_DEFAULT, byref(self._MilDigitizer))</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         print &#39;MIL Dig Identifier: %d&#39;%self._MilDigitizer.value</span>
+
+<span class="c">#         nBands = c_longlong(1)</span>
+<span class="c">#         bufferType = c_longlong(milc.M_SIGNED + 16)</span>
+<span class="c">#         bufferAttribute = c_longlong(milc.M_GRAB + milc.M_IMAGE)</span>
+        
+<span class="c">#         self._xSizePx = 2048/binning</span>
+<span class="c">#         self._ySizePx = 2048/binning</span>
+<span class="c">#         #print binning</span>
+<span class="c">#         #sys.exit()</span>
+
+<span class="c">#         if self._mode==0: # double buffer / continuous grab</span>
+<span class="c">#             self._mil.MbufAllocColor(self._MilSystem, nBands, self._xSizePx, self._ySizePx, bufferType, bufferAttribute, byref(self._MilImage0))</span>
+<span class="c">#             self._mil.MbufAllocColor(self._MilSystem, nBands, self._xSizePx, self._ySizePx, bufferType, bufferAttribute, byref(self._MilImage1))</span>
+<span class="c">#             self.printMilError()</span>
+<span class="c">#             print &#39;MIL Img Identifiers: %d,%d&#39;%(self._MilImage0.value, self._MilImage1.value)</span>
+
+<span class="c">#             self._mil.MdigGrabContinuous(self._MilDigitizer,self._MilImage0)</span>
+<span class="c">#             self.printMilError()</span>
+<span class="c">#         elif self._mode==1: # double buffer / single grabs</span>
+<span class="c">#             self._mil.MbufAllocColor(self._MilSystem, nBands, self._xSizePx, self._ySizePx, bufferType, bufferAttribute, byref(self._MilImage0))</span>
+<span class="c">#             self._mil.MbufAllocColor(self._MilSystem, nBands, self._xSizePx, self._ySizePx, bufferType, bufferAttribute, byref(self._MilImage1))</span>
+<span class="c">#             self.printMilError()</span>
+<span class="c">#             print &#39;MIL Img Identifiers: %d,%d&#39;%(self._MilImage0.value, self._MilImage1.value)</span>
+<span class="c">#             self._mil.MdigControlInt64(self._MilDigitizer,milc.M_GRAB_MODE,milc.M_ASYNCHRONOUS)</span>
+<span class="c">#             self._mil.MdigGrab(self._MilDigitizer,self._MilImage0)</span>
+<span class="c">#         elif self._mode==2: # single buffer / single grabs</span>
+<span class="c">#             self._mil.MbufAllocColor(self._MilSystem, nBands, self._xSizePx, self._ySizePx, bufferType, bufferAttribute, byref(self._MilImage0))</span>
+<span class="c">#             self.printMilError()</span>
+<span class="c">#             print &#39;MIL Img Identifiers: %d,%d&#39;%(self._MilImage0.value, self._MilImage1.value)</span>
+<span class="c">#             self._mil.MdigControlInt64(self._MilDigitizer,milc.M_GRAB_MODE,milc.M_ASYNCHRONOUS)</span>
+<span class="c">#             self._mil.MdigGrab(self._MilDigitizer,self._MilImage0)</span>
+            
+            
+
+
+<span class="c">#         self._im = np.zeros([np.int16(self._ySizePx),np.int16(self._xSizePx)]).astype(np.int16)</span>
+<span class="c">#         self._im_ptr = self._im.ctypes.data</span>
+
+
+        
+
+<span class="c">#         # there must be a bug in camera initialization code above because if the camera has been</span>
+<span class="c">#         # sitting, on, for a while, the first few frames (up to 3, anecdotally) may have serious</span>
+<span class="c">#         # geometry problems (via, it seems, tap reordering). A quick and dirty fix: grab a few images</span>
+<span class="c">#         # upon initialization:</span>
+<span class="c">#         nBad = 5</span>
+<span class="c">#         for iBad in range(nBad):</span>
+<span class="c">#             bad = self.getImage()</span>
+
+
+<span class="c">#     def close(self):</span>
+<span class="c">#         print &#39;Closing camera...&#39;</span>
+<span class="c">#         self._mil.MdigHalt(self._MilDigitizer)</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         self._mil.MbufFree(self._MilImage0)</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         self._mil.MbufFree(self._MilImage1)</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         self._mil.MdigFree(self._MilDigitizer)</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         self._mil.MsysFree(self._MilSystem)</span>
+<span class="c">#         self.printMilError()</span>
+<span class="c">#         self._mil.MappFree(self._MilApplication)</span>
+
+<span class="c">#     def updateImage(self):</span>
+<span class="c">#         t0 = time()</span>
+<span class="c">#         if self._mode==0:</span>
+<span class="c">#             self._mil.MdigGrabWait(self._MilDigitizer, milc.M_GRAB_FRAME_END );</span>
+<span class="c">#             self._mil.MbufCopy(self._MilImage0,self._MilImage1)</span>
+<span class="c">#             self._mil.MbufGet(self._MilImage1,self._im_ptr)</span>
+<span class="c">#         elif self._mode==1:</span>
+<span class="c">#             self._mil.MdigGrabWait(self._MilDigitizer, milc.M_GRAB_FRAME_END )</span>
+<span class="c">#             self._mil.MbufCopy(self._MilImage0,self._MilImage1)</span>
+<span class="c">#             self._mil.MdigGrab(self._MilDigitizer,self._MilImage0)</span>
+<span class="c">#             self._mil.MbufGet(self._MilImage1,self._im_ptr)</span>
+<span class="c">#         elif self._mode==2:</span>
+<span class="c">#             #self._mil.MdigGrabWait(self._MilDigitizer, milc.M_GRAB_FRAME_END )</span>
+<span class="c">#             self._mil.MdigGrab(self._MilDigitizer,self._MilImage0)</span>
+<span class="c">#             self._mil.MbufGet(self._MilImage0,self._im_ptr)</span>
+<span class="c">#         t1 = time()</span>
+            
+<span class="c">#     def printMilError(self):</span>
+<span class="c">#         err = c_longlong(0)</span>
+<span class="c">#         self._mil.MappGetError(2L,byref(err))</span>
+<span class="c">#         print &#39;MIL Error Code: %d&#39;%err.value</span>
+    
+
+
+<span class="c"># class AOCameraMatrox(AOCamera):</span>
+<span class="c">#     &quot;&quot;&quot;A class representing a Matrox camera&quot;&quot;&quot;</span>
+<span class="c">#     if sys.platform==&#39;win32&#39;:</span>
+<span class="c">#         _mil = windll.LoadLibrary(&quot;mil&quot;)</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraBinningPx</span>
+<span class="c">#         if type(val)!=IntType:</span>
+<span class="c">#             raise Exception(&#39;cameraBinningPx should be an integer&#39;)</span>
+<span class="c">#         _binningPx = float(val)</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraPixelSizeM</span>
+<span class="c">#         if type(val)!=FloatType:</span>
+<span class="c">#             raise Exception(&#39;cameraPixelSizeM should be a float&#39;)</span>
+<span class="c">#         _physicalPixelSizeM = val</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+
+
+<span class="c">#     _physicalPixelSizeM = pyao_config.cameraPixelSizeM</span>
+
+<span class="c">#     _pixelSizeM = _physicalPixelSizeM * _binningPx</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraFilename</span>
+<span class="c">#         if type(val)!=StringType:</span>
+<span class="c">#             raise Exception(&#39;cameraFilename should be a string&#39;)</span>
+<span class="c">#         _cameraFilename = val</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+<span class="c">#     _MilApplication = c_long(0)</span>
+<span class="c">#     _MilSystem = c_long(0)</span>
+<span class="c">#     _MilDisplay = c_long(0)</span>
+<span class="c">#     _MilDigitizer = c_long(0)</span>
+<span class="c">#     _MilImage0 = c_long(0)</span>
+<span class="c">#     _MilImage1 = c_long(0)</span>
+<span class="c">#     _InitFlag = milc.M_PARTIAL</span>
+
+<span class="c">#     try:</span>
+<span class="c">#         val = pyao_config.cameraIntegrationTimeS</span>
+<span class="c">#         if type(val)!=FloatType:</span>
+<span class="c">#             raise Exception(&#39;integration time should be a float&#39;)</span>
+<span class="c">#         _integrationTimeS = val</span>
+<span class="c">#     except Exception as e:</span>
+<span class="c">#         print &#39;Configuration file error:&#39;,e</span>
+<span class="c">#         sys.exit()</span>
+
+<span class="c">#     def __init__(self):</span>
+<span class="c">#         if sys.platform==&#39;win32&#39;:</span>
+<span class="c"># #            mil = windll.LoadLibrary(&quot;mil&quot;)</span>
+<span class="c"># #            mil = CDLL(&quot;mil&quot;)</span>
+<span class="c">#             pass</span>
+<span class="c">#         else:</span>
+<span class="c">#             err = &#39;Attempting to load AOCameraMatrox on non-Windows32 platform. Please use AOCameraSim instead.&#39;</span>
+<span class="c">#             sys.exit(err)</span>
+
+<span class="c">#         self._mil.MappAlloc(self._InitFlag,byref(self._MilApplication))</span>
+
+<span class="c">#         self._mil.MsysAlloc(milc.M_DEF_SYSTEM_TYPE, milc.M_DEF_SYSTEM_NUM, </span>
+<span class="c">#                            self._InitFlag, byref(self._MilSystem))</span>
+
+<span class="c">#         self._mil.MdigAlloc(self._MilSystem, milc.M_DEFAULT, </span>
+<span class="c">#                            self._cameraFilename, milc.M_DEFAULT, </span>
+<span class="c">#                            byref(self._MilDigitizer))</span>
+
+<span class="c">#         self._mil.MdigControl(self._MilDigitizer, milc.M_GRAB_SCALE_X, </span>
+<span class="c">#                              c_double( 1.0 / self._binningPx ) );</span>
+
+<span class="c">#         try:</span>
+<span class="c">#             binY = pyao_config.cameraBinY</span>
+<span class="c">#         except Exception:</span>
+<span class="c">#             binY = False</span>
+
+<span class="c">#         if binY:</span>
+<span class="c">#             self._mil.MdigControl(self._MilDigitizer, milc.M_GRAB_SCALE_Y, </span>
+<span class="c">#                                   c_double( 1.0 / self._binningPx ) );</span>
+
+<span class="c">#         self._xSizePx = c_long(long(self._mil.MdigInquire(</span>
+<span class="c">#                     self._MilDigitizer,milc.M_SIZE_X,None)/self._binningPx))</span>
+
+<span class="c">#         self._ySizePx = c_long(long(self._mil.MdigInquire(</span>
+<span class="c">#                     self._MilDigitizer,milc.M_SIZE_Y,None)/self._binningPx))</span>
+
+<span class="c">#         attribute0 = c_longlong(milc.M_IMAGE + milc.M_GRAB + milc.M_PROC </span>
+<span class="c">#                                 + milc.M_ON_BOARD)</span>
+<span class="c">#         attribute1 = c_longlong(milc.M_IMAGE + milc.M_GRAB + milc.M_PROC)</span>
+<span class="c">#         type = c_long(16 + milc.M_UNSIGNED)</span>
+<span class="c">#         self._mil.MbufAlloc2d(self._MilSystem, self._xSizePx, self._ySizePx, type, </span>
+<span class="c">#                              attribute0, byref(self._MilImage0) )</span>
+<span class="c">#         self._mil.MbufAlloc2d(self._MilSystem, self._xSizePx, self._ySizePx, type, </span>
+<span class="c">#                              attribute1, byref(self._MilImage1) )</span>
+
+<span class="c">#         self._mil.MdigGrabContinuous(self._MilDigitizer,self._MilImage0)</span>
+
+<span class="c">#         #self._im = np.zeros([np.int16(self._ySizePx),np.int16(self._xSizePx)]).astype(np.uint16)</span>
+<span class="c">#         self._im = np.zeros([np.int16(self._ySizePx),np.int16(self._xSizePx)]).astype(np.int16)</span>
+<span class="c">#         self._im_ptr = self._im.ctypes.data</span>
+
+
+<span class="c">#     def close(self):</span>
+<span class="c">#         self._mil.MdigHalt(self._MilDigitizer)</span>
+<span class="c">#         self._mil.MbufFree(self._MilImage0)</span>
+<span class="c">#         self._mil.MbufFree(self._MilImage1)</span>
+<span class="c">#         self._mil.MdigFree(self._MilDigitizer)</span>
+<span class="c">#         self._mil.MsysFree(self._MilSystem)</span>
+<span class="c">#         self._mil.MappFree(self._MilApplication)</span>
+
+<span class="c">#     def updateImage(self):</span>
+<span class="c">#         # to profile the loop, comment out the wait command below; this</span>
+<span class="c">#         # may result in the same image being grabbed more than once, but</span>
+<span class="c">#         # gives an estimate of the loop rate based only on wavefront</span>
+<span class="c">#         # computations</span>
+<span class="c">#         self._mil.MdigGrabWait(self._MilDigitizer, milc.M_GRAB_NEXT_FRAME );</span>
+<span class="c">#         self._mil.MbufCopy(self._MilImage0,self._MilImage1)</span>
+<span class="c">#         self._mil.MbufGet(self._MilImage1,self._im_ptr)</span>
+<span class="c">#         sy,sx = self.getShape()</span>
+<span class="c">#         self._im[sy-2:sy,:] = self._im[sy-4:sy-2,:]</span>
+
+<span class="c">#     def setExposureTime(self,expTime=.017):</span>
+<span class="c">#         #sprintf_s( cmdStr, sizeof( cmdStr ), &quot;set %f\r&quot;, integrationTime );</span>
+<span class="c">#         #MdigControl( MilDigitizer, M_UART_WRITE_STRING, M_PTR_TO_DOUBLE( cmdStr ) );</span>
+<span class="c">#         #cmdStr = &#39;set %f\r&#39;%expTime</span>
+<span class="c">#         #self._mil.MdigControl(self._MilDigitizer,milc.M_UART_WRITE_STRING,cmdStr)</span>
+<span class="c">#         x = c_double(10.0)</span>
+<span class="c">#         self._mil.MdigInquire(self._MilDigitizer,milc.M_GRAB_EXPOSURE_TIME,byref(x))</span>
+<span class="c">#         self._mil.MdigControl(self._MilDigitizer,milc.M_GRAB_EXPOSURE_TIME,c_double(expTime))</span>
+
+    
+    </div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Ravi S. Jonnal.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.5</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Installation of PyAO &mdash; kungpao 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="kungpao 1.0 documentation" href="index.html" />
+    <link rel="next" title="Calibration of AO systems, using PyAO" href="calibration.html" />
+    <link rel="prev" title="Introduction to PyAO" href="introduction.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="installation-of-pyao">
+<h1>Installation of PyAO<a class="headerlink" href="#installation-of-pyao" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="installing-python-and-other-packages">
+<h2>Installing Python and other packages<a class="headerlink" href="#installing-python-and-other-packages" title="Permalink to this headline">¶</a></h2>
+<p>Installation of PyAO consists largely of installing Python and some
+extensions. Copies of the installers should ordinarily be distributed
+with PyAO, to ensure compatibility among packages. The extensions
+should be installed in the order below, to ensure that missing
+dependencies do not cause installations to abort.</p>
+<p>Exact version numbers are provided below, and should be used when
+possible. Version numbers in Python have the format M.m.R (for Major,
+minor, and Release, respectively). Slight differences between the
+versions listed below and your installed versions are unlikely to
+prevent PyAO from working; for example, PyAO runs on Python 2.6.* and
+2.7.*, but does not run on any minor version or revision of Python 3.</p>
+<blockquote>
+<div><p>1. <a class="reference external" href="http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi">Python 2.7.3</a></p>
+<p>2. <a class="reference external" href="http://pypi.python.org/packages/2.7/n/numpy/numpy-1.6.2.win32-py2.7.exe">NumPy 1.6.2</a></p>
+<p>3. <a class="reference external" href="http://sourceforge.net/projects/scipy/files/scipy/0.11.0/scipy-0.11.0-win32-superpack-python2.7.exe">SciPy 0.11.0</a></p>
+<p>4. <a class="reference external" href="http://sourceforge.net/projects/matplotlib/files/matplotlib/matplotlib-1.1.1/matplotlib-1.1.1.win32-py2.7.exe">Matplotlib 1.1.1</a></p>
+<p>5. <a class="reference external" href="http://pypi.python.org/packages/any/P/PyOpenGL/PyOpenGL-3.0.1.win32.exe">PyOpenGL 3.0.1</a></p>
+<p>6. <a class="reference external" href="http://code.google.com/p/glumpy/downloads/detail?name=glumpy-0.2.1.tar.gz">Glumpy 0.2.1</a></p>
+</div></blockquote>
+<p>By default, Python will be installed in <code class="docutils literal"><span class="pre">C:\Python27</span></code>. This must be
+appended to the PATH environment variable before proceeding.</p>
+<p>The above links point at .msi or .exe installers, with the exception
+of Glumpy. To install Glumpy, unpack the .tar.gz file, open a command
+window and navigate to the directory containing setup.py and issue the
+command <code class="docutils literal"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">install</span></code>.</p>
+</div>
+<div class="section" id="installing-pyao">
+<h2>Installing PyAO<a class="headerlink" href="#installing-pyao" title="Permalink to this headline">¶</a></h2>
+<p>When unpacked, PyAO results in the following directory structure:</p>
+<blockquote>
+<div><ul>
+<li><p class="first"><code class="docutils literal"><span class="pre">pyao/pyao</span></code>: The core AO modules and classes, corresponding to,
+e.g., cameras, wavefront sensors, mirrors, etc.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">pyao/pyao_doc</span></code>: The documentation source and HTML and LaTeX
+builds; see <a class="reference external" href="http://sphinx-doc.org/">Sphinx</a> documentation for
+details.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">pyao/pyao_gui</span></code>: GUIs for various ways of running the system, e.g. closed loop, building a
+poke matrix, etc.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">pyao/pyao_scripts</span></code>: Other Python scripts used for system characterization and testing; examples
+of non-standard use of the system, e.g. temporal bandwidth calculation, etc.</p>
+</li>
+<li><p class="first"><code class="docutils literal"><span class="pre">pyao_etc.tar.gz</span></code> (or <code class="docutils literal"><span class="pre">pyao_etc.zip</span></code>): An archive containing the pyao_etc folder. This should be
+unzipped to a separate location (specified by the environment variable <code class="docutils literal"><span class="pre">PYAOETCPATH</span></code>, see below). It contains
+installation-specific components, viz. those pertaining to a particular instance of the application (e.g. a
+single AO system or a single simulator). One rule of thumb about
+this directory: don&#8217;t copy someone else&#8217;s onto your system, or
+your reference coordinates, influence functions, etc. will be
+clobbered. This folder should contain:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal"><span class="pre">pyao_etc/config/ctrl</span></code>: Influence function(s) (poke matrices).</li>
+<li><code class="docutils literal"><span class="pre">pyao_etc/config/dcf</span></code>: Camera configuration file(s).</li>
+<li><code class="docutils literal"><span class="pre">pyao_etc/config/dm</span></code>: Mirror flat file(s).</li>
+<li><code class="docutils literal"><span class="pre">pyao_etc/config/ref</span></code>: Reference coordinates for the Shack-Hartmann wavefront sensor.</li>
+<li><code class="docutils literal"><span class="pre">pyao_etc/data</span></code>: Other (non-configuration) data the system might use, such as spots
+images used to run the system in simulation mode.</li>
+<li><code class="docutils literal"><span class="pre">pyao_etc/log</span></code>: Where the log files are saved.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+<dl class="docutils">
+<dt>Three environmental variable must be set:</dt>
+<dd><ol class="first last arabic simple">
+<li><code class="docutils literal"><span class="pre">PYTHONPATH</span></code> must be set to the full path to the top level <code class="docutils literal"><span class="pre">pyao</span></code> directory, e.g. <code class="docutils literal"><span class="pre">C:\Program</span> <span class="pre">Files\pyao</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">PYAOPATH</span></code> must be set to the top level <code class="docutils literal"><span class="pre">pyao</span></code> directory as well, e.g. <code class="docutils literal"><span class="pre">C:\Program</span> <span class="pre">Files\pyao</span></code>.</li>
+<li><code class="docutils literal"><span class="pre">PYAOETCPATH</span></code> must be set to the location of the <code class="docutils literal"><span class="pre">pyao_etc</span></code> directory. This directory should be on the local machine, whereas the top level <code class="docutils literal"><span class="pre">pyao</span></code> directory can reside anywhere (e.g. network share, Dropbox, etc.). <code class="docutils literal"><span class="pre">pyao_etc</span></code> should be local in order to optimize data logging (which is faster on a local drive) and also to prevent collisions between 1) system-specific parameters set in <code class="docutils literal"><span class="pre">pyao_config.py</span></code>, which resides <code class="docutils literal"><span class="pre">pyao_etc</span></code> or 2) system-specific configuration files, which reside in <code class="docutils literal"><span class="pre">pyao_etc/config/ctrl</span></code>, <code class="docutils literal"><span class="pre">pyao_etc/config/dcf</span></code>, <code class="docutils literal"><span class="pre">pyao_etc/config/dm</span></code>, and <code class="docutils literal"><span class="pre">pyao_etc/config/ref</span></code>.</li>
+</ol>
+</dd>
+</dl>
+<p>In Windows these are set by right-clicking on &#8216;My Computer&#8217;, then &#8216;Properties&#8217;-&gt;&#8217;Advanced&#8217;-&gt;&#8217;Environment Variables&#8217;, and then editing them by hand.</p>
+<p>In linux, you may append the following to your .bashrc, .bash_profile, or equivalent startup script, replacing dummy paths with your actual paths:</p>
+<blockquote>
+<div><div class="highlight-bash"><div class="highlight"><pre><span class="nb">export </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="nv">$PYTHONPATH</span>:/path/to/pyao
+<span class="nb">export </span><span class="nv">PYAOPATH</span><span class="o">=</span>/path/to/pyao
+<span class="nb">export </span><span class="nv">PYAOETCPATH</span><span class="o">=</span>/path/to/pyao_etc
+</pre></div>
+</div>
+</div></blockquote>
+<p>Please note the difference between the PYTHONPATH definition and the PYAOPATH and PYAOETCPATH definitions. The first appends to any existing definition while the others redefine. This is an important difference; the last two are environmental variables used only by pyao, which expects to find a single path and not a series of paths. PYTHONPATH by contrast may be used by any number of other python applications on your system, necessitating appending.</p>
+<p>The redundancy between 1 and 2 is due to an architectural error that will hopefully be fixed in the next version.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Installation of PyAO</a><ul>
+<li><a class="reference internal" href="#installing-python-and-other-packages">Installing Python and other packages</a></li>
+<li><a class="reference internal" href="#installing-pyao">Installing PyAO</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="introduction.html" title="previous chapter">Introduction to PyAO</a></li>
+      <li>Next: <a href="calibration.html" title="next chapter">Calibration of AO systems, using PyAO</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/installation.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Ravi S. Jonnal.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.5</a>
+      
+      |
+      <a href="_sources/installation.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

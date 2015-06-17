@@ -1,0 +1,674 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pyao.mirrors &mdash; kungpao 1.0 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="kungpao 1.0 documentation" href="../../index.html" />
+    <link rel="up" title="Module code" href="../index.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9">
+
+  </head>
+  <body role="document">  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for pyao.mirrors</h1><div class="highlight"><pre>
+<span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">from</span> <span class="nn">ctypes.util</span> <span class="kn">import</span> <span class="n">find_library</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span><span class="n">ifft</span><span class="p">,</span><span class="n">fft2</span><span class="p">,</span><span class="n">ifft2</span><span class="p">,</span><span class="n">fftshift</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">pyplot</span> <span class="k">as</span> <span class="n">plt</span>
+<span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="kn">as</span> <span class="nn">cm</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">rc</span>
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span><span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">settings</span> <span class="kn">import</span> <span class="n">dmPath</span>
+<span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+<span class="kn">from</span> <span class="nn">zernike</span> <span class="kn">import</span> <span class="o">*</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">import</span> <span class="nn">pyao_config</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="c">#if sys.platform==&#39;win32&#39;:</span>
+<span class="k">if</span> <span class="n">pyao_config</span><span class="o">.</span><span class="n">systemID</span><span class="o">==</span><span class="s">&#39;AO-OCT-2G&#39;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">PyAcedev5</span> <span class="kn">import</span> <span class="o">*</span>
+
+<span class="n">ALPAO_NUM_ACTUATORS</span> <span class="o">=</span> <span class="mi">97</span>
+
+<span class="k">class</span> <span class="nc">AOMirror</span><span class="p">():</span>
+    <span class="n">actuatorMap</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">commandMap</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vec</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">getActuatorMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span>
+
+    <span class="k">def</span> <span class="nf">getCM</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="o">.</span><span class="n">ravel</span><span class="p">()</span>
+
+
+
+<span class="k">class</span> <span class="nc">AOMirrorAlpaoNew</span><span class="p">(</span><span class="n">AOMirror</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A class representing a new ALPAO mirror.</span>
+<span class="sd">    Uses Alpao SDK v 2.13, including Swigged Acedev5 (PyAcedev5)&quot;&quot;&quot;</span>
+
+    <span class="n">cmdMax</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="n">cmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+    <span class="n">pokeCmdMax</span> <span class="o">=</span> <span class="mf">0.05</span>
+    <span class="n">pokeCmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.05</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">!=</span><span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s">&#39;Error: cannot construct AOMirrorAlpao object on a &#39;</span><span class="o">+</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">+</span><span class="s">&#39; system. Use AOMirrorSim instead.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span> <span class="o">=</span> <span class="mi">97</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="n">diam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span><span class="p">)</span>
+        <span class="n">xx</span><span class="p">,</span><span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">diam</span><span class="p">,</span><span class="n">diam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xx</span> <span class="o">=</span> <span class="n">xx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yy</span> <span class="o">=</span> <span class="n">yy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">dmPath</span><span class="o">+</span><span class="s">&#39;flat.txt&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">makeActuatorMap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span>
+
+    <span class="k">def</span> <span class="nf">getDeltaMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span>
+
+    <span class="k">def</span> <span class="nf">makeActuatorMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">rad</span> <span class="o">=</span> <span class="mf">1.1</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dist</span><span class="o">&lt;=</span><span class="n">rad</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">mirrorMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">*-</span><span class="mi">1</span>
+        <span class="n">r</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">myr</span><span class="p">,</span><span class="n">myc</span><span class="p">,</span><span class="n">mya</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">a</span><span class="p">):</span>
+            <span class="n">xpos</span> <span class="o">=</span> <span class="n">myr</span>
+            <span class="n">ypos</span> <span class="o">=</span> <span class="mi">11</span> <span class="o">-</span> <span class="n">myc</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mirrorMap</span><span class="p">[</span><span class="n">ypos</span><span class="p">,</span><span class="n">xpos</span><span class="p">]</span> <span class="o">=</span> <span class="n">mya</span>
+        <span class="k">return</span> <span class="n">mirrorMap</span>
+
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">mirrorID</span> <span class="o">=</span> <span class="n">pyao_config</span><span class="o">.</span><span class="n">mirrorID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dm</span> <span class="o">=</span> <span class="n">PyAcedev5</span><span class="p">(</span><span class="n">mirrorID</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Opening mirror. Mirror ID: &#39;</span><span class="p">,</span><span class="n">mirrorID</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">GetNbActuator</span><span class="p">())</span>
+        <span class="k">print</span> <span class="s">&#39;Number of actuators:</span><span class="si">%d</span><span class="s">&#39;</span><span class="o">%</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">ValueError</span> <span class="k">as</span> <span class="n">ve</span><span class="p">:</span>
+            <span class="k">print</span> <span class="n">ve</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s">&#39;Possible mismatch between flat file </span><span class="si">%s</span><span class="s"> and PyAcedev5 GetNbActuator&#39;</span><span class="o">%</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">dmPath</span><span class="p">,</span><span class="s">&#39;flat.txt&#39;</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">DACReset</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Closing mirror. Result: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">output</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vec</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">vec</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&gt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMax</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMin</span><span class="p">:</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;Requested mirror current excedes limits set in AOMirrorAlpao class. No update.&#39;</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">)</span><span class="o">&gt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMax</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMin</span><span class="p">:</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;Mirror command vector excedes limits set in AOMirrorAlpao class. No update. Flattening&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">values</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[:]</span>
+        <span class="c">#print &#39;mirror max %f, mirror min %f&#39;%(np.max(self.dm.values),np.min(self.dm.values))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dm</span><span class="o">.</span><span class="n">Send</span><span class="p">()</span>
+
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+<span class="c">#        print &#39;Updating mirror. Result: &#39;,str(result)</span>
+
+    <span class="k">def</span> <span class="nf">updateCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+
+    <span class="k">def</span> <span class="nf">writeFlats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nowStr</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y%m</span><span class="si">%d</span><span class="s">%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">flatFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.txt&#39;</span>
+        <span class="n">backupFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.&#39;</span><span class="o">+</span><span class="n">nowStr</span><span class="o">+</span><span class="s">&#39;.backup&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Backing up&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;to&#39;</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Saving new flats to&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%0.8f</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Redefining flats as current mirror command vector.&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">)</span>
+
+
+
+<span class="k">class</span> <span class="nc">AOMirrorAlpaoTest</span><span class="p">(</span><span class="n">AOMirror</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A class representing a new ALPAO mirror.</span>
+<span class="sd">    Uses Alpao SDK v 2.13&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">==</span><span class="s">&#39;win32&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">acecs</span> <span class="o">=</span> <span class="n">CDLL</span><span class="p">(</span><span class="s">&quot;acecs&quot;</span><span class="p">)</span>
+            <span class="n">acedev5</span> <span class="o">=</span> <span class="n">CDLL</span><span class="p">(</span><span class="s">&quot;acedev5&quot;</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&#39;No Alpao DLL loaded. This will probably fail.&#39;</span>
+
+    <span class="n">cmdMax</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">cmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span>
+    <span class="n">defocusStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">0001</span>
+
+    <span class="n">pistonStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">001</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">!=</span><span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s">&#39;Error: cannot construct AOMirrorAlpao object on a &#39;</span><span class="o">+</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">+</span><span class="s">&#39; system. Use AOMirrorSim instead.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span> <span class="o">=</span> <span class="mi">97</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="n">diam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span><span class="p">)</span>
+        <span class="n">xx</span><span class="p">,</span><span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">diam</span><span class="p">,</span><span class="n">diam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xx</span> <span class="o">=</span> <span class="n">xx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yy</span> <span class="o">=</span> <span class="n">yy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">dmPath</span><span class="o">+</span><span class="s">&#39;flat.txt&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">makeActuatorMap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span>
+
+    <span class="k">def</span> <span class="nf">getDeltaMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span>
+
+    <span class="k">def</span> <span class="nf">makeActuatorMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">rad</span> <span class="o">=</span> <span class="mf">1.1</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dist</span><span class="o">&lt;=</span><span class="n">rad</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">mirrorMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">*-</span><span class="mi">1</span>
+        <span class="n">r</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">myr</span><span class="p">,</span><span class="n">myc</span><span class="p">,</span><span class="n">mya</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">a</span><span class="p">):</span>
+            <span class="n">xpos</span> <span class="o">=</span> <span class="n">myr</span>
+            <span class="n">ypos</span> <span class="o">=</span> <span class="mi">11</span> <span class="o">-</span> <span class="n">myc</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mirrorMap</span><span class="p">[</span><span class="n">ypos</span><span class="p">,</span><span class="n">xpos</span><span class="p">]</span> <span class="o">=</span> <span class="n">mya</span>
+        <span class="k">return</span> <span class="n">mirrorMap</span>
+
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Init</span><span class="o">.</span><span class="n">argtypes</span> <span class="o">=</span> <span class="p">[</span><span class="n">c_int</span><span class="p">,</span><span class="n">POINTER</span><span class="p">(</span><span class="n">c_int</span><span class="p">),</span><span class="n">c_char_p</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Init</span><span class="o">.</span><span class="n">restype</span> <span class="o">=</span> <span class="n">c_int</span>
+        <span class="n">cCardID</span> <span class="o">=</span> <span class="n">c_int</span><span class="p">()</span>
+        <span class="n">cMirrorID</span> <span class="o">=</span> <span class="n">c_char_p</span><span class="p">(</span><span class="n">pyao_config</span><span class="o">.</span><span class="n">mirrorID</span><span class="p">)</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Init</span><span class="p">(</span><span class="n">c_int</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span><span class="n">byref</span><span class="p">(</span><span class="n">cCardID</span><span class="p">),</span><span class="n">cMirrorID</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cardID</span> <span class="o">=</span> <span class="n">cCardID</span><span class="o">.</span><span class="n">value</span>
+        <span class="k">print</span> <span class="s">&#39;Opening mirror. Mirror ID: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Release</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Closing mirror. Result: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vec</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">vec</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&gt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMax</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMin</span><span class="p">:</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;Requested mirror current excedes limits set in AOMirrorAlpao class. No update.&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span>
+        
+        <span class="k">if</span> <span class="n">vec</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="s">&#39;double&#39;</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+        <span class="c"># rj: some room for improvement here, if we always pass the current</span>
+        <span class="c"># object&#39;s commandMatrix, we won&#39;t have to do as much type-checking</span>
+        <span class="c"># and casting</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">c_void_p</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Send</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="n">byref</span><span class="p">(</span><span class="n">c_int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">)),</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="c">#result = self.acedev5.acedev5Send97Intensity(self.cardID,ptr)</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+        <span class="c">#print &#39;Updating mirror. Result: &#39;,str(result)</span>
+
+    <span class="k">def</span> <span class="nf">updateCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+
+    <span class="k">def</span> <span class="nf">writeFlats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nowStr</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y%m</span><span class="si">%d</span><span class="s">%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">flatFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.txt&#39;</span>
+        <span class="n">backupFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.&#39;</span><span class="o">+</span><span class="n">nowStr</span><span class="o">+</span><span class="s">&#39;.backup&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Backing up&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;to&#39;</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Saving new flats to&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%0.8f</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Redefining flats as current mirror command vector.&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">)</span>
+
+
+
+
+
+<div class="viewcode-block" id="AOMirrorAlpao"><a class="viewcode-back" href="../../old/pyao.mirrors.html#pyao.mirrors.AOMirrorAlpao">[docs]</a><span class="k">class</span> <span class="nc">AOMirrorAlpao</span><span class="p">(</span><span class="n">AOMirror</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A class representing an ALPAO mirror&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">==</span><span class="s">&#39;win32&#39;</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">acecs</span> <span class="o">=</span> <span class="n">CDLL</span><span class="p">(</span><span class="s">&quot;acecs&quot;</span><span class="p">)</span>
+            <span class="n">acedev5</span> <span class="o">=</span> <span class="n">CDLL</span><span class="p">(</span><span class="s">&quot;acedev5&quot;</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">print</span> <span class="s">&#39;No Alpao DLL loaded. This will probably fail.&#39;</span>
+
+
+    <span class="n">cmdMax</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">cmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.2</span>
+    <span class="n">pokeCmdMax</span> <span class="o">=</span> <span class="mf">0.03</span>
+    <span class="n">pokeCmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.03</span>
+
+    <span class="n">defocusStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">0001</span>
+
+    <span class="n">pistonStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">001</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">!=</span><span class="s">&#39;win32&#39;</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="s">&#39;Error: cannot construct AOMirrorAlpao object on a &#39;</span><span class="o">+</span><span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">+</span><span class="s">&#39; system. Use AOMirrorSim instead.&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span> <span class="o">=</span> <span class="mi">97</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="n">diam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span><span class="p">)</span>
+        <span class="n">xx</span><span class="p">,</span><span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">diam</span><span class="p">,</span><span class="n">diam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xx</span> <span class="o">=</span> <span class="n">xx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yy</span> <span class="o">=</span> <span class="n">yy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">dmPath</span><span class="o">+</span><span class="s">&#39;flat.txt&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">makeActuatorMap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">increaseDefocus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusStep</span>
+        <span class="n">defocus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">defocus</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror defocus: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+
+    <span class="k">def</span> <span class="nf">decreaseDefocus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusStep</span>
+        <span class="n">defocus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">defocus</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror defocus: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+
+    <span class="k">def</span> <span class="nf">increasePiston</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonStep</span>
+        <span class="n">piston</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">piston</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror piston: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+
+    <span class="k">def</span> <span class="nf">decreasePiston</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonStep</span>
+        <span class="n">piston</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">piston</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror piston: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span>
+
+    <span class="k">def</span> <span class="nf">getDeltaMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span>
+
+    <span class="k">def</span> <span class="nf">makeActuatorMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">rad</span> <span class="o">=</span> <span class="mf">1.1</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dist</span><span class="o">&lt;=</span><span class="n">rad</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">mirrorMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">*-</span><span class="mi">1</span>
+        <span class="n">r</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">myr</span><span class="p">,</span><span class="n">myc</span><span class="p">,</span><span class="n">mya</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">a</span><span class="p">):</span>
+            <span class="n">xpos</span> <span class="o">=</span> <span class="n">myr</span>
+            <span class="n">ypos</span> <span class="o">=</span> <span class="mi">11</span> <span class="o">-</span> <span class="n">myc</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mirrorMap</span><span class="p">[</span><span class="n">ypos</span><span class="p">,</span><span class="n">xpos</span><span class="p">]</span> <span class="o">=</span> <span class="n">mya</span>
+        <span class="k">return</span> <span class="n">mirrorMap</span>
+
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cardID</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Init</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Opening mirror. Mirror ID: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Release</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Closing mirror. Result: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vec</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">vec</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&gt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMax</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMin</span><span class="p">:</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;Requested mirror current excedes limits set in AOMirrorAlpao class. No update.&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span>
+        
+        <span class="k">if</span> <span class="n">vec</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="s">&#39;double&#39;</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+        <span class="c"># rj: some room for improvement here, if we always pass the current</span>
+        <span class="c"># object&#39;s commandMatrix, we won&#39;t have to do as much type-checking</span>
+        <span class="c"># and casting</span>
+        <span class="n">ptr</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">ctypes</span><span class="o">.</span><span class="n">data_as</span><span class="p">(</span><span class="n">c_void_p</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">acedev5</span><span class="o">.</span><span class="n">acedev5Send97Intensity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cardID</span><span class="p">,</span><span class="n">ptr</span><span class="p">)</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+        <span class="c">#print &#39;Updating mirror. Result: &#39;,str(result)</span>
+
+    <span class="k">def</span> <span class="nf">updateCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+
+    <span class="k">def</span> <span class="nf">writeFlats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nowStr</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y%m</span><span class="si">%d</span><span class="s">%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">flatFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.txt&#39;</span>
+        <span class="n">backupFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.&#39;</span><span class="o">+</span><span class="n">nowStr</span><span class="o">+</span><span class="s">&#39;.backup&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Backing up&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;to&#39;</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Saving new flats to&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">savetxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">,</span><span class="s">&#39;</span><span class="si">%0.8f</span><span class="s">&#39;</span><span class="p">)</span>
+        <span class="k">print</span> <span class="s">&#39;Redefining flats as current mirror command vector.&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">flatFilename</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">)</span>
+
+</div>
+<span class="k">class</span> <span class="nc">AOMirrorSim</span><span class="p">(</span><span class="n">AOMirror</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A class representing a simulated ALPAO mirror&quot;&quot;&quot;</span>
+
+    <span class="n">cmdMax</span> <span class="o">=</span> <span class="mf">0.1</span>
+    <span class="n">cmdMin</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.1</span>
+    <span class="n">defocusStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">0001</span>
+
+    <span class="n">pistonStep</span> <span class="o">=</span> <span class="o">.</span><span class="mo">001</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span> <span class="o">=</span> <span class="mi">97</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span> <span class="o">=</span> <span class="mi">11</span>
+        <span class="n">diam</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">diamActuators</span><span class="p">)</span>
+        <span class="n">xx</span><span class="p">,</span><span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">diam</span><span class="p">,</span><span class="n">diam</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xx</span> <span class="o">=</span> <span class="n">xx</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">yy</span> <span class="o">=</span> <span class="n">yy</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">loadtxt</span><span class="p">(</span><span class="n">dmPath</span><span class="o">+</span><span class="s">&#39;flat.txt&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">makeActuatorMap</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">&gt;-</span><span class="mi">1</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">5</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">=</span> <span class="n">zernike</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">increaseDefocus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusStep</span>
+        <span class="n">defocus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">defocus</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror defocus: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+
+    <span class="k">def</span> <span class="nf">decreaseDefocus</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusStep</span>
+        <span class="n">defocus</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">defocus</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror defocus: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusCoef</span>
+
+    <span class="k">def</span> <span class="nf">increasePiston</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonStep</span>
+        <span class="n">piston</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">piston</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror piston: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+
+    <span class="k">def</span> <span class="nf">decreasePiston</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonStep</span>
+        <span class="n">piston</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonBasis</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">piston</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mask</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+        <span class="k">print</span> <span class="s">&#39;Mirror piston: &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonCoef</span>
+
+
+    <span class="k">def</span> <span class="nf">__del__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+
+    <span class="k">def</span> <span class="nf">getCommandMatrix</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span>
+
+    <span class="k">def</span> <span class="nf">getDeltaMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span>
+
+    <span class="k">def</span> <span class="nf">makeActuatorMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">xx</span><span class="o">**</span><span class="mi">2</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">yy</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+        <span class="n">rad</span> <span class="o">=</span> <span class="mf">1.1</span>
+        <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">mask</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dist</span><span class="o">&lt;=</span><span class="n">rad</span><span class="p">)]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="n">mirrorMap</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dist</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">*-</span><span class="mi">1</span>
+        <span class="n">r</span><span class="p">,</span><span class="n">c</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+        <span class="n">a</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="k">for</span> <span class="p">(</span><span class="n">myr</span><span class="p">,</span><span class="n">myc</span><span class="p">,</span><span class="n">mya</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">r</span><span class="p">,</span><span class="n">c</span><span class="p">,</span><span class="n">a</span><span class="p">):</span>
+            <span class="n">xpos</span> <span class="o">=</span> <span class="n">myr</span>
+            <span class="n">ypos</span> <span class="o">=</span> <span class="mi">11</span> <span class="o">-</span> <span class="n">myc</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="n">mirrorMap</span><span class="p">[</span><span class="n">ypos</span><span class="p">,</span><span class="n">xpos</span><span class="p">]</span> <span class="o">=</span> <span class="n">mya</span>
+        <span class="k">return</span> <span class="n">mirrorMap</span>
+
+    <span class="k">def</span> <span class="nf">open</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;Opening mirror (for pretend). Mirror ID: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="mi">12345</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">print</span> <span class="s">&#39;Closing mirror (for pretend). Result: &#39;</span><span class="p">,</span><span class="nb">str</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span><span class="n">vec</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">vec</span><span class="o">==</span><span class="bp">None</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&gt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMax</span> <span class="ow">or</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">vec</span><span class="p">)</span><span class="o">&lt;</span><span class="bp">self</span><span class="o">.</span><span class="n">cmdMin</span><span class="p">:</span>
+            <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+            <span class="k">print</span> <span class="s">&#39;Requested mirror current excedes limits set in AOMirrorAlpao class. No update.&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">defocusMatrix</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">pistonMatrix</span>
+        
+        <span class="k">if</span> <span class="n">vec</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="s">&#39;double&#39;</span><span class="p">:</span>
+            <span class="n">vec</span> <span class="o">=</span> <span class="n">vec</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">double</span><span class="p">)</span>
+        <span class="c"># rj: some room for improvement here, if we always pass the current</span>
+        <span class="c"># object&#39;s commandMatrix, we won&#39;t have to do as much type-checking</span>
+        <span class="c"># and casting</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="n">vec</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+
+        <span class="c">#self.commandMap = np.zeros(self.actuatorMap.shape)</span>
+
+    <span class="k">def</span> <span class="nf">updateCommandMap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">aidxvec</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nActuators</span><span class="p">)</span>
+        <span class="n">oldCommandMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span>
+        <span class="k">for</span> <span class="n">aidx</span> <span class="ow">in</span> <span class="n">aidxvec</span><span class="p">:</span>
+            <span class="n">placement</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">actuatorMap</span><span class="o">==</span><span class="n">aidx</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span><span class="p">[</span><span class="n">placement</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMatrix</span><span class="p">[</span><span class="n">aidx</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">deltaMap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">commandMap</span> <span class="o">-</span> <span class="n">oldCommandMap</span>
+
+    <span class="k">def</span> <span class="nf">writeFlats</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">nowStr</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s">&quot;%Y%m</span><span class="si">%d</span><span class="s">%H%M%S&quot;</span><span class="p">)</span>
+        <span class="n">flatFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.txt&#39;</span>
+        <span class="n">backupFilename</span> <span class="o">=</span> <span class="n">dmPath</span> <span class="o">+</span> <span class="s">&#39;flat.&#39;</span><span class="o">+</span><span class="n">nowStr</span><span class="o">+</span><span class="s">&#39;.backup&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Backing up&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;to&#39;</span><span class="p">,</span><span class="n">backupFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Saving new flats to&#39;</span><span class="p">,</span><span class="n">flatFilename</span><span class="p">,</span><span class="s">&#39;.&#39;</span>
+        <span class="k">print</span> <span class="s">&#39;Redefining flats as current mirror command vector.&#39;</span>
+
+    <span class="k">def</span> <span class="nf">flatten</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flatCurrents</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2015, Ravi S. Jonnal.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.3.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.5</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
