@@ -9,12 +9,10 @@
 from ctypes import *
 from ctypes.util import find_library
 import numpy as np
-from numpy.fft import fft,ifft,fft2,ifft2,fftshift
+import scipy as sp
 from time import time,sleep
 import sys
-from types import *
-from glob import glob
-import scipy
+
 
 # import milc
 # from utils import *
@@ -24,12 +22,11 @@ import scipy
 
 class Camera:
     """A template for subclassing AO camera classes.
-    A the functions `grab` and
-
+    Camera subclasses must implement the functions `__init__` and `grab`.
     """
     
     def grab(self):
-        """Updates this object's image. Can be implemented in a variety
+        """Updates and returns this object's image. Can be implemented in a variety
         of ways, depending on hardware (using the camera's API, in combination
         with ctypes (see :mod:`pyao.cameras.AOCameraMatrox`) or by reading 
         images from the disk (see :mod:`pyao.cameras.AOCameraSim`), for 
@@ -42,7 +39,7 @@ class Camera:
         Returns:
             
         """
-        pass
+        return self.img
 
     def getImage(self):
         """Calls this object's updateImage() and gets its _im array.
