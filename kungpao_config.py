@@ -23,9 +23,10 @@ mirror_id = 'alpaoDM97-15-012'
 #################################################################################
 # camera configuration:
 camera_filename = 'acA2040-180km-4tap-12bit_reloaded.dcf'
-camera_binning_px = 2
 camera_physical_pixel_size = 5.5e-6
-
+camera_physical_width = 2048
+camera_physical_height = 2048
+camera_binning = 1
 
 #################################################################################
 # wavefront sensor configuration:

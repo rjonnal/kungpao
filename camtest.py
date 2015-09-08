@@ -12,8 +12,9 @@ import numpy as np
 import scipy as sp
 from time import time,sleep
 import sys
+import kungpao_config
 
-BUFFERING_SIZE_MAX = 20
+BUFFERING_SIZE_MAX = 7
 
 from pyao import milc
 # from utils import *
@@ -26,8 +27,14 @@ MilDigitizer = c_longlong()
 MilDisplay = c_longlong()
 MilImageDisp = c_longlong()
 mil = windll.LoadLibrary("mil")
-MilGrabBufferList = c_longlong * BUFFERING_SIZE_MAX
-MilGrabBufferListSize = c_long()
+
+# attempt 1:
+MilGrabBufferListType = c_longlong * BUFFERING_SIZE_MAX
+MilGrabBufferList = MilGrabBufferListType()
+
+# attempt 2:
+#MilGrabBufferList = [c_longlong()]*BUFFERING_SIZE_MAX
+
 ProcessFrameCount = c_long(0)
 NbFrames = c_long(0)
 ProcessFrameRate = c_double(0)
@@ -74,12 +81,23 @@ print 'MIL Sys Identifier: %d'%(MilSystem.value)
 
 
 cameraFilename = 'C:/pyao_etc/config/dcf/acA2040-180km-4tap-12bit_reloaded.dcf'
-
 cDcfFn = c_wchar_p(cameraFilename)
 mil.MdigAllocW(MilSystem, milc.M_DEFAULT, cDcfFn, milc.M_DEFAULT, byref(MilDigitizer))
 printMilError('MdigAllocW')
 
+xsize = c_long(kungpao_config.camera_physical_width)
+ysize = c_long(kungpao_config.camera_physical_height)
 
+for MilGrabBufferListSize in range(BUFFERING_SIZE_MAX):
+    mil.MbufAlloc2d(MilSystem,
+                    xsize,
+                    ysize,
+                    milc.M_DEF_IMAGE_TYPE,
+                    milc.M_IMAGE+milc.M_GRAB+milc.M_PROC,
+                    cast(MilGrabBufferList[MilGrabBufferListSize], POINTER(c_longlong)))
+    printMilError('MbufAlloc2d')
+
+    
 quit()
 
 
