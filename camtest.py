@@ -97,7 +97,25 @@ for MilGrabBufferListSize in range(BUFFERING_SIZE_MAX):
                     cast(MilGrabBufferList[MilGrabBufferListSize], POINTER(c_longlong)))
     printMilError('MbufAlloc2d')
 
-    
+# free one buffer for possible temporary buffering:
+mil.MbufFree(cast(MilGrabBufferList[BUFFERING_SIZE_MAX-1], POINTER(c_longlong)))
+printMilError('MbufFree')
+
+UserHookData.MilImageDisp = MilImageDisp
+UserHookData.ProcessedImageCount = c_long(0)
+
+
+
+
+mil.MdigProcess(MilDigitizer, MilGrabBufferList, BUFFERING_SIZE_MAX, milc.M_START, milc.M_DEFAULT,
+                processing_function, byref(UserHookData))
+printMilError('MdigProcess')
+
+# free all the buffers now that we're done:
+for MilGrabBufferListSize in range(BUFFERING_SIZE_MAX):
+    mil.MbufFree(cast(MilGrabBufferList[MilGrabBufferListSize], POINTER(c_longlong)))
+    printMilError('MbufFree')
+
 quit()
 
 
