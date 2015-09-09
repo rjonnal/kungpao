@@ -51,9 +51,17 @@ class HookDataStruct(Structure):
 
     _fields_ = [("MilImageDisp",c_longlong),
                 ("ProcessedImageCount",c_long)]
+                
+    @classmethod
+    def from_param(cls, obj):
+        if obj is None:
+            return c_void_p()
+        else:
+            return obj.c_ptr                
+
+            
 
 UserHookData = HookDataStruct()
-
 def quit():
     print 'Closing camera...'
     mil.MdigHalt(MilDigitizer)
@@ -104,11 +112,18 @@ printMilError('MbufFree')
 UserHookData.MilImageDisp = MilImageDisp
 UserHookData.ProcessedImageCount = c_long(0)
 
+def processing_function(hook_type_long, hook_id_longlong, hook_data_pointer):
+    print 'hi'
+    return c_long(333)
 
+#print pointer(UserHookData)
+#print POINTER(HookDataStruct)
+processing_function_ptr = WINFUNCTYPE(c_long,c_long,c_longlong,POINTER(HookDataStruct))
 
+mil.MdigProcess.argtypes = [c_longlong,MilGrabBufferListType,c_long,c_longlong,c_longlong,processing_function_ptr,POINTER(HookDataStruct)]
 
 mil.MdigProcess(MilDigitizer, MilGrabBufferList, BUFFERING_SIZE_MAX, milc.M_START, milc.M_DEFAULT,
-                processing_function, byref(UserHookData))
+                processing_function_ptr(processing_function), byref(UserHookData))
 printMilError('MdigProcess')
 
 # free all the buffers now that we're done:
