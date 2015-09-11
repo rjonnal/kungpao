@@ -29,11 +29,14 @@ MilImageDisp = c_longlong()
 mil = windll.LoadLibrary("mil")
 
 # attempt 1:
+#buffers = MilGrabBufferListType()
+
 MilGrabBufferListType = c_longlong * BUFFERING_SIZE_MAX
-MilGrabBufferList = MilGrabBufferListType()
+buffers_py = [0]*BUFFERING_SIZE_MAX
+buffers = (c_longlong * len(buffers_py))(*buffers_py)
 
 # attempt 2:
-#MilGrabBufferList = [c_longlong()]*BUFFERING_SIZE_MAX
+#buffers = [c_longlong()]*BUFFERING_SIZE_MAX
 
 ProcessFrameCount = c_long(0)
 NbFrames = c_long(0)
@@ -96,17 +99,38 @@ printMilError('MdigAllocW')
 xsize = c_long(kungpao_config.camera_physical_width)
 ysize = c_long(kungpao_config.camera_physical_height)
 
+# Now the Application, System, and Digitizer are successfully set up.
+# Let's start with a simple grab into a single buffer
+buff = c_longlong()
+# MIL_ID MbufAlloc2d(
+# MIL_ID SystemId,
+# MIL_INT SizeX,
+# MIL_INT SizeY,
+# MIL_INT Type,
+# MIL_INT64 Attribute,
+# MIL_ID *BufIdPtr )
+mil.MbufAlloc2d.argtypes([c_longlong,
+
+
+
+
+
+mil.MbufAlloc2d.argtypes([c_longlong
+
 for MilGrabBufferListSize in range(BUFFERING_SIZE_MAX):
     mil.MbufAlloc2d(MilSystem,
                     xsize,
                     ysize,
                     milc.M_DEF_IMAGE_TYPE,
                     milc.M_IMAGE+milc.M_GRAB+milc.M_PROC,
-                    cast(MilGrabBufferList[MilGrabBufferListSize], POINTER(c_longlong)))
+                    cast(buffers[MilGrabBufferListSize], POINTER(c_long)))
     printMilError('MbufAlloc2d')
 
+print buffers[5]
+sys.exit()
+    
 # free one buffer for possible temporary buffering:
-mil.MbufFree(cast(MilGrabBufferList[BUFFERING_SIZE_MAX-1], POINTER(c_longlong)))
+mil.MbufFree(cast(buffers[BUFFERING_SIZE_MAX-1], POINTER(c_longlong)))
 printMilError('MbufFree')
 
 UserHookData.MilImageDisp = MilImageDisp
@@ -120,16 +144,16 @@ def processing_function(hook_type_long, hook_id_longlong, hook_data_pointer):
 #print POINTER(HookDataStruct)
 processing_function_ptr = WINFUNCTYPE(c_long,c_long,c_longlong,POINTER(HookDataStruct))
 
-#mil.MdigProcess.argtypes = [c_longlong,MilGrabBufferListType,c_long,c_longlong,c_longlong,processing_function_ptr,POINTER(HookDataStruct)]
+mil.MdigProcess.argtypes = [c_longlong,MilGrabBufferListType,c_long,c_longlong,c_longlong,processing_function_ptr,POINTER(HookDataStruct)]
 
-print dir(MilGrabBufferList)
-print MilGrabBufferList
-mil.MdigProcess(MilDigitizer, byref(MilGrabBufferList), BUFFERING_SIZE_MAX, milc.M_START, milc.M_DEFAULT,processing_function_ptr(processing_function), byref(UserHookData))
+print dir(buffers)
+print buffers
+mil.MdigProcess(MilDigitizer, buffers, BUFFERING_SIZE_MAX, milc.M_START, milc.M_DEFAULT,processing_function_ptr(processing_function), byref(UserHookData))
 printMilError('MdigProcess')
 
 # free all the buffers now that we're done:
 for MilGrabBufferListSize in range(BUFFERING_SIZE_MAX):
-    mil.MbufFree(cast(MilGrabBufferList[MilGrabBufferListSize], POINTER(c_longlong)))
+    mil.MbufFree(cast(buffers[MilGrabBufferListSize], POINTER(c_longlong)))
     printMilError('MbufFree')
 
 quit()
