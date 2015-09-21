@@ -6,8 +6,6 @@ long   ProcessFrameCount  = 0;
 double ProcessFrameRate   = 0;
 long callbackData;
 
-/* User's processing function prototype. */
-long MFTYPE ProcessingFunction(long HookType, MIL_ID HookId, void MPTYPE *HookDataPtr);
 
 /* User's processing function hook data structure. */
 typedef struct
@@ -17,31 +15,53 @@ typedef struct
    } HookDataStruct;
 
 
-HookDataStruct UserHookData;
+//HookDataStruct UserHookData;
    
    
 /* Main function. */
 /* ---------------*/
 
-void go(void (*f)(long,long,long))
-{
-
+void setup_default(void){
    /* Allocate defaults. */
 //   MappAllocDefault(M_SETUP, &MilApplication, &MilSystem, &MilDisplay,
 //                                              &MilDigitizer, &MilImageDisp);
    MappAllocDefault(M_SETUP, &MilApplication, &MilSystem, M_NULL,
                                               &MilDigitizer, &MilImageDisp);
+}
 
+
+void setup(MIL_CONST_TEXT_PTR system_name, MIL_CONST_TEXT_PTR camera_filename){
+    printf("kungpao_camera setup system_name: %ls\n",system_name);
+    printf("kungpao_camera setup camera_filename: %ls\n",camera_filename);
+    MappAlloc(M_DEFAULT,&MilApplication);
+    MsysAlloc(MIL_TEXT(system_name),M_DEFAULT,M_DEFAULT,&MilSystem);
+    // fallback: MsysAlloc(M_SYSTEM_SOLIOS,M_DEFAULT,M_DEFAULT,&MilSystem);
+    
+    // Left off here (but issue applies to MsysAlloc above too.
+    // If I hard-code the DCF filename in C it works, but if I pass it as a ctypes c_wchar_p,
+    // as shown in kungpao_camera_test.py, it doesn't.
+    // Solution: use c_char_p, because MIL_TEXT doesn't handle unicode strings.
+
+    MdigAlloc(MilSystem,M_DEFAULT,MIL_TEXT(camera_filename),M_DEFAULT,&MilDigitizer);
+    // fallback: MdigAlloc(MilSystem,M_DEFAULT,MIL_TEXT("C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf"),M_DEFAULT,&MilDigitizer);
+}
+
+void go(void (*f)(long,long,long), HookDataStruct UserHookData)
+{
    /* Allocate the grab buffers and clear them. */
    MappControl(M_ERROR, M_PRINT_DISABLE);
+   long x = 1024;//MdigInquire(MilDigitizer, M_SIZE_X, M_NULL);
+   long y = 1024;//MdigInquire(MilDigitizer, M_SIZE_Y, M_NULL);
+   printf("Image dimensions: %d x %d.\n",x,y);
    for(MilGrabBufferListSize = 0; MilGrabBufferListSize<BUFFERING_SIZE_MAX; MilGrabBufferListSize++)
       {
       MbufAlloc2d(MilSystem,
-                  MdigInquire(MilDigitizer, M_SIZE_X, M_NULL),
-                  MdigInquire(MilDigitizer, M_SIZE_Y, M_NULL),
+                  x,
+                  y,
                   M_DEF_IMAGE_TYPE,
                   M_IMAGE+M_GRAB+M_PROC,
                   &MilGrabBufferList[MilGrabBufferListSize]);
+      printf("Allocated buffer: %d\n",MilGrabBufferList[MilGrabBufferListSize]);
       if (MilGrabBufferList[MilGrabBufferListSize])
          {
          MbufClear(MilGrabBufferList[MilGrabBufferListSize], 0xFF);
@@ -73,7 +93,7 @@ void go(void (*f)(long,long,long))
 
 }
 
-void stop(void (*f)(long,long,long)){
+void stop(void (*f)(long,long,long), HookDataStruct UserHookData){
 
    MdigProcess(MilDigitizer, MilGrabBufferList, MilGrabBufferListSize,
                M_STOP, M_DEFAULT, f, &UserHookData);
