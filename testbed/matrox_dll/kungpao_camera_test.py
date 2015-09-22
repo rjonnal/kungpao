@@ -4,7 +4,7 @@ import numpy as np
 import scipy as sp
 from time import time,sleep
 import sys
-from matplotlib import pylot as plt
+from matplotlib import pyplot as plt
 
 def processing_function(hook_type_long, hook_id_longlong, hook_data_pointer):
     print hook_type_long

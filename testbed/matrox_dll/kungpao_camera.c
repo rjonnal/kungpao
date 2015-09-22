@@ -15,7 +15,7 @@ typedef struct
    } HookDataStruct;
 
 
-//HookDataStruct UserHookData;
+HookDataStruct UserHookData;
    
    
 /* Main function. */
@@ -46,7 +46,7 @@ void setup(MIL_CONST_TEXT_PTR system_name, MIL_CONST_TEXT_PTR camera_filename){
     // fallback: MdigAlloc(MilSystem,M_DEFAULT,MIL_TEXT("C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf"),M_DEFAULT,&MilDigitizer);
 }
 
-void go(void (*f)(long,long,long), HookDataStruct UserHookData)
+void start(void)
 {
    /* Allocate the grab buffers and clear them. */
    MappControl(M_ERROR, M_PRINT_DISABLE);
@@ -71,25 +71,12 @@ void go(void (*f)(long,long,long), HookDataStruct UserHookData)
       }
    MappControl(M_ERROR, M_PRINT_ENABLE);
 
-   /*
-   MilGrabBufferListSize--;
-   MbufFree(MilGrabBufferList[MilGrabBufferListSize]);
-
-   printf("\nMULTIPLE BUFFERED PROCESSING.\n");
-   printf("-----------------------------\n\n");
-   printf("Press <Enter> to start.\n\n");
-
-   MdigGrabContinuous(MilDigitizer, MilImageDisp);
-   getch();
-
-   MdigHalt(MilDigitizer);
-   */
    
    UserHookData.MilImageDisp        = MilImageDisp;
    UserHookData.ProcessedImageCount = 0;
 
    MdigProcess(MilDigitizer, MilGrabBufferList, MilGrabBufferListSize,
-                             M_START, M_DEFAULT, f, &UserHookData);
+                             M_START, M_DEFAULT, ProcessingFunction, &UserHookData);
 
 }
 
@@ -114,5 +101,36 @@ void stop(void (*f)(long,long,long), HookDataStruct UserHookData){
 }
 
 
+/* -----------------------------------------------------------------------*/
 /* User's processing function called every time a grab buffer is modified. */
 /* -----------------------------------------------------------------------*/
+
+/* Local defines. */
+#define STRING_LENGTH_MAX  20
+#define STRING_POS_X       20
+#define STRING_POS_Y       20
+
+long MFTYPE ProcessingFunction(long HookType, MIL_ID HookId, void MPTYPE *HookDataPtr)
+   {
+   HookDataStruct *UserHookDataPtr = (HookDataStruct *)HookDataPtr;
+   MIL_ID ModifiedBufferId;
+   MIL_TEXT_CHAR Text[STRING_LENGTH_MAX]= {'\0',};
+
+   /* Retrieve the MIL_ID of the grabbed buffer. */
+   MdigGetHookInfo(HookId, M_MODIFIED_BUFFER+M_BUFFER_ID, &ModifiedBufferId);
+
+   /* Print and draw the frame count. */
+   UserHookDataPtr->ProcessedImageCount++;
+   printf("Processing frame #%d.\r", UserHookDataPtr->ProcessedImageCount);
+   MOs_ltoa(UserHookDataPtr->ProcessedImageCount, Text, 10);
+   MgraText(M_DEFAULT, ModifiedBufferId, STRING_POS_X, STRING_POS_Y, Text);
+
+   /* Perform the processing and update the display. */
+   #if (!M_MIL_LITE)
+      MimArith(ModifiedBufferId, M_NULL, UserHookDataPtr->MilImageDisp, M_NOT);
+   #else
+      MbufCopy(ModifiedBufferId, UserHookDataPtr->MilImageDisp);
+   #endif
+
+   return 0;
+   }
