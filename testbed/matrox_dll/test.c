@@ -142,7 +142,6 @@ long MFTYPE ProcessingFunction(long HookType, MIL_ID HookId, void MPTYPE *HookDa
    HookDataStruct *UserHookDataPtr = (HookDataStruct *)HookDataPtr;
    MIL_ID ModifiedBufferId;
    MIL_TEXT_CHAR Text[STRING_LENGTH_MAX]= {'\0',};
-   
 
    /* Retrieve the MIL_ID of the grabbed buffer. */
    MdigGetHookInfo(HookId, M_MODIFIED_BUFFER+M_BUFFER_ID, &ModifiedBufferId);
