@@ -8,3 +8,6 @@ MIL_ID MilSystem     ;
 MIL_ID MilDigitizer  ;
 MIL_ID MilDisplay    ;
 MIL_ID MilImageDisp  ;
+
+/* User's processing function prototype. */
+long MFTYPE ProcessingFunction(long HookType, MIL_ID HookId, void MPTYPE *HookDataPtr);
