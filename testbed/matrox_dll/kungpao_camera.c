@@ -4,8 +4,6 @@ MIL_ID MilGrabBufferList[BUFFERING_SIZE_MAX] = { 0 };
 long   MilGrabBufferListSize;
 long   ProcessFrameCount  = 0;
 double ProcessFrameRate   = 0;
-long size_x = -1;
-long size_y = -1;
 
 /* User's processing function hook data structure. */
 typedef struct
@@ -14,7 +12,13 @@ typedef struct
    long    ProcessedImageCount;
    } HookDataStruct;
 
-
+typedef struct
+{
+    float x;
+    float y;
+} centroid_struct;
+   
+   
 HookDataStruct UserHookData;
    
    
@@ -148,3 +152,27 @@ long get_size_y(void)
 {
    return MdigInquire(MilDigitizer, M_SIZE_Y, M_NULL);
 }
+
+#if SERIAL
+void compute_centroid(unsigned short * image, 
+                      float ref_x, 
+                      float ref_y, 
+                      unsigned short rad, 
+                      centroid_struct * centroid, 
+                      unsigned short index)
+{
+    
+}
+#endif
+
+#if PARALLEL
+void compute_centroid(unsigned short * image, 
+                      float ref_x, 
+                      float ref_y, 
+                      unsigned short rad, 
+                      centroid_struct * centroid, 
+                      unsigned short index)
+{
+    g;
+}
+#endif
