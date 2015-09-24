@@ -49,7 +49,7 @@
 <dt id="kungpao.cameras.Camera">
 <em class="property">class </em><code class="descclassname">kungpao.cameras.</code><code class="descname">Camera</code><a class="reference internal" href="_modules/kungpao/cameras.html#Camera"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kungpao.cameras.Camera" title="Permalink to this definition">¶</a></dt>
 <dd><p>A template for subclassing AO camera classes.
-A the functions <cite>grab</cite> and</p>
+Camera subclasses must implement the functions <cite>__init__</cite> and <cite>grab</cite>.</p>
 <dl class="method">
 <dt id="kungpao.cameras.Camera.close">
 <code class="descname">close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/kungpao/cameras.html#Camera.close"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kungpao.cameras.Camera.close" title="Permalink to this definition">¶</a></dt>
@@ -142,7 +142,7 @@ A the functions <cite>grab</cite> and</p>
 <dl class="method">
 <dt id="kungpao.cameras.Camera.grab">
 <code class="descname">grab</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/kungpao/cameras.html#Camera.grab"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kungpao.cameras.Camera.grab" title="Permalink to this definition">¶</a></dt>
-<dd><p>Updates this object&#8217;s image. Can be implemented in a variety
+<dd><p>Updates and returns this object&#8217;s image. Can be implemented in a variety
 of ways, depending on hardware (using the camera&#8217;s API, in combination
 with ctypes (see <code class="xref py py-mod docutils literal"><span class="pre">pyao.cameras.AOCameraMatrox</span></code>) or by reading 
 images from the disk (see <code class="xref py py-mod docutils literal"><span class="pre">pyao.cameras.AOCameraSim</span></code>), for 

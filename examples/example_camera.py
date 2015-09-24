@@ -4,12 +4,7 @@ from kungpao.cameras import Camera
 
 '''
 
-cam = Camera()
-wfs = WavefrontSensor(cam)
-dm = AOMirrorAlpao()
-loop = ClosedLoop(wfs,dm)
-
-while True:
-    loop.step()
+cam = Camera() # instantiate a camera object
+cam.grab() # 
     
 

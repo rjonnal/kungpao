@@ -50,12 +50,10 @@
 <span class="kn">from</span> <span class="nn">ctypes</span> <span class="kn">import</span> <span class="o">*</span>
 <span class="kn">from</span> <span class="nn">ctypes.util</span> <span class="kn">import</span> <span class="n">find_library</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-<span class="kn">from</span> <span class="nn">numpy.fft</span> <span class="kn">import</span> <span class="n">fft</span><span class="p">,</span><span class="n">ifft</span><span class="p">,</span><span class="n">fft2</span><span class="p">,</span><span class="n">ifft2</span><span class="p">,</span><span class="n">fftshift</span>
+<span class="kn">import</span> <span class="nn">scipy</span> <span class="kn">as</span> <span class="nn">sp</span>
 <span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">time</span><span class="p">,</span><span class="n">sleep</span>
 <span class="kn">import</span> <span class="nn">sys</span>
-<span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="o">*</span>
-<span class="kn">from</span> <span class="nn">glob</span> <span class="kn">import</span> <span class="n">glob</span>
-<span class="kn">import</span> <span class="nn">scipy</span>
+
 
 <span class="c"># import milc</span>
 <span class="c"># from utils import *</span>
@@ -65,12 +63,11 @@
 
 <div class="viewcode-block" id="Camera"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera">[docs]</a><span class="k">class</span> <span class="nc">Camera</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;A template for subclassing AO camera classes.</span>
-<span class="sd">    A the functions `grab` and</span>
-
+<span class="sd">    Camera subclasses must implement the functions `__init__` and `grab`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     
 <div class="viewcode-block" id="Camera.grab"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.grab">[docs]</a>    <span class="k">def</span> <span class="nf">grab</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;Updates this object&#39;s image. Can be implemented in a variety</span>
+        <span class="sd">&quot;&quot;&quot;Updates and returns this object&#39;s image. Can be implemented in a variety</span>
 <span class="sd">        of ways, depending on hardware (using the camera&#39;s API, in combination</span>
 <span class="sd">        with ctypes (see :mod:`pyao.cameras.AOCameraMatrox`) or by reading </span>
 <span class="sd">        images from the disk (see :mod:`pyao.cameras.AOCameraSim`), for </span>
@@ -83,7 +80,7 @@
 <span class="sd">        Returns:</span>
 <span class="sd">            </span>
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">pass</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">img</span>
 </div>
 <div class="viewcode-block" id="Camera.getImage"><a class="viewcode-back" href="../../api.html#kungpao.cameras.Camera.getImage">[docs]</a>    <span class="k">def</span> <span class="nf">getImage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;Calls this object&#39;s updateImage() and gets its _im array.</span>
