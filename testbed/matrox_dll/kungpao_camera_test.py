@@ -56,8 +56,9 @@ if True:
     kcam.compute_centroid.argtypes = [c_void_p,c_void_p,c_float,c_float,c_ushort,
                                       POINTER(search_box),c_ushort,c_ushort,c_ushort]
     s = 21
-    im_in = np.round(np.random.rand(s,s)*32).astype(np.uint16)
-    im_out = np.round(np.random.rand(s,s)*32).astype(np.uint16)
+    noise_max = 64
+    im_in = np.round(np.random.rand(s,s)*noise_max).astype(np.uint16)
+    im_out = np.round(np.random.rand(s,s)*noise_max).astype(np.uint16)
     f1 = (s-1)/2-2
     f2 = (s-1)/2+1
     fmid = (s-1)/2-1
