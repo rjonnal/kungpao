@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdio.h>
+#include <math.h>
 
 #define BUFFERING_SIZE_MAX 20
 #define SERIAL 1

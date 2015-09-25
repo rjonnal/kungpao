@@ -14,16 +14,17 @@ typedef struct
 
 typedef struct
 {
-    float x;
-    float y;
-} centroid_struct;
+    float centroid_x;
+    float centroid_y;
+    unsigned short dc;
+    unsigned short box_max;
+    unsigned short box_min;
+    float box_total;
+} search_box;
    
    
 HookDataStruct UserHookData;
    
-   
-/* Main function. */
-/* ---------------*/
 
 void setup_default(void){
    /* Allocate defaults. */
@@ -101,7 +102,9 @@ void stop(void){
    MdigInquire(MilDigitizer, M_PROCESS_FRAME_RATE,   &ProcessFrameRate);
    printf("\n\n%ld frames grabbed at %.1f frames/sec (%.1f ms/frame).\n",
                           ProcessFrameCount, ProcessFrameRate, 1000.0/ProcessFrameRate);
+}
 
+void release(void){
    /* Free the grab buffers. */
    while(MilGrabBufferListSize > 0)
       MbufFree(MilGrabBufferList[--MilGrabBufferListSize]);
@@ -153,24 +156,92 @@ long get_size_y(void)
    return MdigInquire(MilDigitizer, M_SIZE_Y, M_NULL);
 }
 
+static unsigned int counter, xs, xe, ys, ye, xes, xee, yes, yee, x, y, yScaled, xScaled, widthScaled;
+static float denom, xsum, ysum, scaledPixelFloat, lastImageRange, box_total;
+static short image_max, image_min, box_max, box_min, edge_rad, edge_max;
+static int pixel;
+static unsigned char scaledPixelUChar;
+
 #if SERIAL
-void compute_centroid(unsigned short * image, 
+void compute_centroid(unsigned short * image_in,
+                      unsigned short * image_out,
                       float ref_x, 
                       float ref_y, 
                       unsigned short rad, 
-                      centroid_struct * centroid, 
-                      unsigned short index)
+                      search_box * sb, 
+                      unsigned short index,
+                      unsigned short width,
+                      unsigned short height)
 {
+    xsum = 0.0;
+    ysum = 0.0;
+    denom = 0.0;
+    box_max = 0;
+    box_min = 2 ^ 15;
+    box_total = 0.0;
     
+    // boundaries fo the box
+    xs = (int)round(ref_x) - rad;
+    xe = (int)round(ref_x) + rad;
+    ys = (int)round(ref_y) - rad;
+    ye = (int)round(ref_y) + rad;
+    
+    edge_rad = 2;
+    if (edge_rad>rad) edge_rad = rad;
+    // boundaries of search regions near centers of each edge
+    xes = (int)round(ref_x) - edge_rad;
+    xee = (int)round(ref_x) + edge_rad;
+    yes = (int)round(ref_y) - edge_rad;
+    yee = (int)round(ref_y) + edge_rad;
+    
+    // survey box edge for brightest(ish) pixel, to use as DC
+    edge_max = 0;
+    for (x = xes; x <= xee; x = x + 1){
+        pixel = (int)image_in[ys * width + x];
+        //image_out[ys*width+x] = 500; // used to visualize box edges in testing
+        if (pixel>edge_max) edge_max = pixel;
+        pixel = (int)image_in[ye * width + x];
+        //image_out[ye*width+x] = 500; // used to visualize box edges in testing
+        if (pixel>edge_max) edge_max = pixel;
+    }
+    for (y = yes; y <= yee; y = y + 1){
+        pixel = (int)image_in[y * width + xs];
+        //image_out[y*width+xs] = 500; // used to visualize box edges in testing
+        if (pixel>edge_max) edge_max = pixel;
+        pixel = (int)image_in[y * width + xe];
+        //image_out[y*width+xe] = 500; // used to visualize box edges in testing
+        if (pixel>edge_max) edge_max = pixel;
+    }
+    sb->dc = edge_max;
+    for (x = xs; x <= xe; x = x + 1){
+        for (y = ys; y <= ye; y = y + 1){
+            pixel = (int)image_in[y * width + x];
+            //printf("pixel %d, box_max %d, box_min %d\n",pixel,box_max,box_min);
+            if (pixel>box_max) box_max = pixel;
+            if (pixel<box_min) box_min = pixel;
+
+            pixel = pixel  - (int)edge_max;
+            if (pixel<0) pixel=0;
+            image_out[y * width + x] = pixel;
+            xsum = xsum + x * pixel;
+            ysum = ysum + y * pixel;
+            denom = denom + pixel;
+        }
+    }
+    sb->box_max = box_max;
+    sb->box_min = box_min;
+    sb->centroid_x = xsum / denom;
+    sb->centroid_y = ysum / denom;
 }
 #endif
 
 #if PARALLEL
-void compute_centroid(unsigned short * image, 
+void compute_centroid(unsigned short * image_in,
+                      unsigned short * image_out,
                       float ref_x, 
                       float ref_y, 
                       unsigned short rad, 
-                      centroid_struct * centroid, 
+                      search_box * centroid, 
                       unsigned short index)
 {
     g;
