@@ -1,11 +1,17 @@
-====================
+=========================
 Introduction to *kungpao*
-====================
+=========================
 
 Goals
 -----
 
 *kungpao* is a collection of programming tools which--along with Python's extensive numerical and scientificl libraries--permit control and characterization of an adaptive optics (AO) system. It was largely inspired by ALPAO's `ACE <http://www.alpao.fr/products_ACE.html>`_, and provides very similar functionality using open source software.
+
+Quickstart
+----------
+
+
+
 
 Architecture
 ------------
