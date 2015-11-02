@@ -6,6 +6,7 @@
 .. moduleauthor:: Ravi S. Jonnal <rjonnal@gmail.com>
 
 """
+
 from ctypes import *
 from ctypes.util import find_library
 import numpy as np
