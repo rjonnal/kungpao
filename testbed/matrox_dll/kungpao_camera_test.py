@@ -7,12 +7,11 @@ from matplotlib import pyplot as plt
 from numpy.ctypeslib import ndpointer
 
 
+
 kcam = windll.LoadLibrary('./kungpao_camera')
 system_name = c_char_p('M_SYSTEM_SOLIOS')
 camera_filename = c_char_p('C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf')
 kcam.setup(system_name,camera_filename)
-
-
 
 size_x = kcam.get_size_x()
 size_y = kcam.get_size_y()
