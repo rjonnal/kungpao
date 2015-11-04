@@ -1,17 +1,5 @@
 #include "kungpao_camera.h"
 
-MIL_ID MilGrabBufferList[BUFFERING_SIZE_MAX] = { 0 };
-long   MilGrabBufferListSize;
-long   ProcessFrameCount  = 0;
-double ProcessFrameRate   = 0;
-
-/* User's processing function hook data structure. */
-typedef struct
-   {
-   MIL_ID  MilImageDisp;
-   long    ProcessedImageCount;
-   } HookDataStruct;
-
 typedef struct
 {
     float centroid_x;
@@ -22,6 +10,22 @@ typedef struct
     float box_total;
 } search_box;
    
+
+
+#ifdef TARGET_WINDOWS
+MIL_ID MilGrabBufferList[BUFFERING_SIZE_MAX] = { 0 };
+long   MilGrabBufferListSize;
+
+long   ProcessFrameCount  = 0;
+double ProcessFrameRate   = 0;
+
+/* User's processing function hook data structure. */
+typedef struct
+   {
+   MIL_ID  MilImageDisp;
+   long    ProcessedImageCount;
+   } HookDataStruct;
+
    
 HookDataStruct UserHookData;
    
@@ -156,13 +160,40 @@ long get_size_y(void)
    return MdigInquire(MilDigitizer, M_SIZE_Y, M_NULL);
 }
 
+#endif
+
+
+#ifdef TARGET_LINUX
+void setup(char *system_name, char *camera_filename){
+    printf("kungpao_camera setup system_name: ");
+    printf(system_name);
+    printf("\n");
+
+    printf("kungpao_camera setup camera_filename: ");
+    printf(camera_filename);
+    printf("\n");
+
+    FILE *f;
+    unsigned int buffer[2048*2048];
+    f = fopen("test.bin","rb");
+    int n;
+    if (f){
+      n = fread(buffer,2048*2048,1,f);
+    }else{
+      printf("error opening file");
+    }
+    
+}
+
+
+#endif
+
 static unsigned int counter, xs, xe, ys, ye, xes, xee, yes, yee, x, y, yScaled, xScaled, widthScaled;
 static float denom, xsum, ysum, scaledPixelFloat, lastImageRange, box_total;
 static short image_max, image_min, box_max, box_min, edge_rad, edge_max;
 static int pixel;
 static unsigned char scaledPixelUChar;
 
-#if SERIAL
 void compute_centroid(unsigned short * image_in,
                       unsigned short * image_out,
                       float ref_x, 
@@ -233,17 +264,4 @@ void compute_centroid(unsigned short * image_in,
     sb->centroid_x = xsum / denom;
     sb->centroid_y = ysum / denom;
 }
-#endif
 
-#if PARALLEL
-void compute_centroid(unsigned short * image_in,
-                      unsigned short * image_out,
-                      float ref_x, 
-                      float ref_y, 
-                      unsigned short rad, 
-                      search_box * centroid, 
-                      unsigned short index)
-{
-    g;
-}
-#endif

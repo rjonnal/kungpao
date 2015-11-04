@@ -6,11 +6,20 @@ import sys
 from matplotlib import pyplot as plt
 from numpy.ctypeslib import ndpointer
 
+platform = sys.platform
+is_linux = sys.platform=='linux2'
+is_windows32 = sys.platform=='win32'
 
+if is_linux:
+    kcam = cdll.LoadLibrary('./cpp/kungpao_camera.so')
+    system_name = c_char_p('WHATEVER')
+    camera_filename = c_char_p('WHATEVER')
 
-kcam = windll.LoadLibrary('./kungpao_camera')
-system_name = c_char_p('M_SYSTEM_SOLIOS')
-camera_filename = c_char_p('C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf')
+if is_windows32:
+    kcam = windll.LoadLibrary('./cpp/kungpao_camera')
+    system_name = c_char_p('M_SYSTEM_SOLIOS')
+    camera_filename = c_char_p('C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf')
+
 kcam.setup(system_name,camera_filename)
 
 size_x = kcam.get_size_x()

@@ -1,5 +1,8 @@
+#ifdef TARGET_WINDOWS
 #include <mil.h>
 #include <conio.h>
+#endif
+
 #include <stdlib.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -9,6 +12,7 @@
 #define SERIAL 1
 #define PARALLEL 1-SERIAL
 
+#ifdef TARGET_WINDOWS
 
 MIL_ID MilApplication;
 MIL_ID MilSystem     ;
@@ -18,3 +22,5 @@ MIL_ID MilImageDisp  ;
 
 /* User's processing function prototype. */
 long MFTYPE ProcessingFunction(long HookType, MIL_ID HookId, void MPTYPE *HookDataPtr);
+
+#endif
