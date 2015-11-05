@@ -2,21 +2,22 @@ from ctypes import *#c_char_p, windll
 import numpy as np
 import scipy as sp
 from time import time,sleep
-import sys
+import sys,os
 from matplotlib import pyplot as plt
 from numpy.ctypeslib import ndpointer
+import kungpao_config as kconfig
 
 platform = sys.platform
 is_linux = sys.platform=='linux2'
 is_windows32 = sys.platform=='win32'
 
 if is_linux:
-    kcam = cdll.LoadLibrary('./cpp/kungpao_camera.so')
+    kcam = cdll.LoadLibrary(os.path.join(kconfig.lib_path,'kungpao_camera.so'))
     system_name = c_char_p('WHATEVER')
     camera_filename = c_char_p('WHATEVER')
 
 if is_windows32:
-    kcam = windll.LoadLibrary('./cpp/kungpao_camera')
+    kcam = cdll.LoadLibrary(os.path.join(kconfig.lib_path,'kungpao_camera'))
     system_name = c_char_p('M_SYSTEM_SOLIOS')
     camera_filename = c_char_p('C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf')
 
@@ -29,16 +30,16 @@ im = np.zeros((size_y,size_x)).astype(np.uint16)
 im_ptr = im.ctypes.data
 
 
-if False:
+if True:
     kcam.start()
 
     plt.figure()
     ph = plt.imshow(im)
     for k in range(10):
         kcam.get_current_image(im_ptr)
+        print im.ravel()[5000]
         plt.cla()
         plt.imshow(im)
-        #ph.set_array(im)
         plt.pause(.001)
 
     kcam.stop()

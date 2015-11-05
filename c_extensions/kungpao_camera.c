@@ -9,7 +9,9 @@ typedef struct
     unsigned short box_min;
     float box_total;
 } search_box;
-   
+
+static unsigned short int buffer[2048*2048];
+
 
 
 #ifdef TARGET_WINDOWS
@@ -164,6 +166,7 @@ long get_size_y(void)
 
 
 #ifdef TARGET_LINUX
+
 void setup(char *system_name, char *camera_filename){
     printf("kungpao_camera setup system_name: ");
     printf(system_name);
@@ -173,16 +176,47 @@ void setup(char *system_name, char *camera_filename){
     printf(camera_filename);
     printf("\n");
 
+    
+}
+
+void get_current_image(void * data_pointer)
+{
     FILE *f;
-    unsigned int buffer[2048*2048];
     f = fopen("test.bin","rb");
     int n;
     if (f){
-      n = fread(buffer,2048*2048,1,f);
+      n = fread(buffer,4,2048*2048,f);
+      /* int k; */
+      /* for(k = 0;k<50000;k = k + 1000){ */
+      /*   printf("%d ",buffer[k]); */
+      /* } */
+      printf("buffer[5000]: %d",buffer[5000]);
+      printf("\n");
     }else{
       printf("error opening file");
     }
-    
+    data_pointer = (void *)buffer;
+    //printf("data_ponter[5000]: %d",data_pointer[5000]);
+}
+
+long get_size_x(void)
+{
+   return 2048;
+}
+
+long get_size_y(void)
+{
+   return 2048;
+}
+
+
+void start(void){
+}
+
+void stop(void){
+}
+
+void release(void){
 }
 
 

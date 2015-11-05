@@ -15,6 +15,11 @@
 #systemID = 'AO-OCT-2G'
 system_id = 'simulator'
 
+
+#################################################################################
+# Path to libraries
+lib_path = '/home/rjonnal/code/kungpao/lib'
+
 #################################################################################
 # mirror configuration (look in directory specified by environment variable 
 # %ACECFG% for same-named configuration files)
@@ -77,31 +82,4 @@ loopSafeMode = True
 pokeMatrixFilename = '20150515171245_poke.txt'
 ctrlMatrixSVDModes = 30
 
-
-
 #################################################################################
-#################################################################################
-#################################################################################
-# END OF USER CONFIGURATION
-# Please do not edit anything below this block. What happens below
-# is, essentially, prepending paths from pyao.settings (e.g. the paths
-# to camera files, reference files, etc) to the filenames, and printing
-# them out to the console, or errors.
-from pyao import settings
-try:
-    cameraFilename = settings.dcfPath + cameraFilename
-    print 'Camera file: ',cameraFilename
-except Exception as e:
-    print 'Error:',e
-
-try:
-    referenceCoordinateFilename = settings.refPath + referenceCoordinateFilename
-    print 'Reference file: ',referenceCoordinateFilename
-except Exception as e:
-    print 'Error:',e
-
-try:
-    pokeMatrixFilename = settings.ctrlPath + pokeMatrixFilename
-    print 'Poke file: ',pokeMatrixFilename
-except Exception as e:
-    print 'Error:',e
