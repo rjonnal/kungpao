@@ -37,7 +37,7 @@ if True:
     ph = plt.imshow(im)
     for k in range(10):
         kcam.get_current_image(im_ptr)
-        print im.ravel()[5000]
+        #print im.ravel()[5000]
         plt.cla()
         plt.imshow(im)
         plt.pause(.001)
