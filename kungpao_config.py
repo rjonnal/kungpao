@@ -17,12 +17,22 @@ system_id = 'simulator'
 
 
 #################################################################################
-# Path to libraries
-# Specify a single path with 'lib_path', or a list of paths with 'lib_paths'. The
-# latter overrides the former, if one of the paths in lib_paths exists. (See end
+# Paths
+# Specify a single path with 'XXX_path', or a list of paths with 'XXX_paths'. The
+# latter overrides the former, if one of the paths in XXX_paths exists. (See end
 # of this file for logic).
-lib_path = 'C:/code/kungpao/lib'
+#################################################################################
+# Path to shared libraries
 lib_paths = ['C:/code/kungpao/lib','/home/rjonnal/code/kungpao/lib']
+#################################################################################
+# Path to camera configuration files
+dcf_paths = ['C:/code/kungpao_etc/config/dcf/']
+#################################################################################
+#################################################################################
+#################################################################################
+#################################################################################
+
+
 
 
 #################################################################################
@@ -91,12 +101,16 @@ ctrlMatrixSVDModes = 30
 # If lib_paths exists and is non-empty, set lib_path to the first existing path
 # in the list.
 import os
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-try:
-    if len(lib_paths):
-        for test in lib_paths:
-            if os.path.exists(test):
-                lib_path = test
-                break
-except Exception as e:
-    print e
+
+def find_path(path_list):
+    ''' Return the first valid (existing) path in path_list.'''
+    for test in path_list:
+        if os.path.exists(test):
+            return test
+    
+lib_path = find_path(lib_paths)
+dcf_path = find_path(dcf_paths)

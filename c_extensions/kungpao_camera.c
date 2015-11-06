@@ -181,18 +181,18 @@ void setup(char *system_name, char *camera_filename){
 
 void get_current_image(void * data_pointer)
 {
-  //unsigned short int buffer[2048*2048];
+  static unsigned short int buffer[2048*2048];
   FILE *f;
   f = fopen("/home/rjonnal/code/kungpao/data/test.bin","rb");
   int n;
   if (f){
-    n = fread((unsigned short int *)data_pointer,2,2048*2048,f);
+    n = fread(buffer,2,2048*2048,f);
   }else{
     printf("error opening file");
   }
   fclose(f);
+  memcpy(data_pointer,buffer,2048*2048*2);
 }
-
 
 long get_size_x(void)
 {
@@ -242,8 +242,9 @@ void test(void * arr){
 }
 
 
-void change_num(short unsigned int * ptr){
-  short unsigned int newarr[2];
+//void change_num(short unsigned int * ptr){
+void change_num(void * ptr){
+  static short unsigned int newarr[2];
   newarr[0] = 7;
   newarr[1] = 8;
   memcpy(ptr,newarr,4);

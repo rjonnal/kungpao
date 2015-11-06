@@ -31,24 +31,27 @@ print p_arr,c_arr
 kcam.change_num(c_arr)
 print p_arr,c_arr
 
-sys.exit()
 
     
 kcam.setup(system_name,camera_filename)
 
 size_x = kcam.get_size_x()
 size_y = kcam.get_size_y()
-print size_x,size_y
 im = np.zeros((size_y,size_x)).astype(np.uint16)
-im[0,0] = 13
-#im_ptr = im.ctypes.data
-
-
 im_ptr = im.ctypes.data_as(c_uint16_p)
 
-im[0,0] = 3
-kcam.test(im_ptr)
-print im[0,0], ' should not be 3'
+kcam.get_current_image(im_ptr)
+plt.subplot(1,2,1)
+plt.imshow(im)
+plt.colorbar()
+vprof = np.max(im,axis=1)
+ypos = np.argmax(vprof)
+prof = im[ypos,:]
+plt.axhline(ypos)
+plt.subplot(1,2,2)
+plt.plot(prof)
+
+plt.show()
 
 sys.exit()
 
