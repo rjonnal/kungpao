@@ -18,7 +18,12 @@ system_id = 'simulator'
 
 #################################################################################
 # Path to libraries
-lib_path = '/home/rjonnal/code/kungpao/lib'
+# Specify a single path with 'lib_path', or a list of paths with 'lib_paths'. The
+# latter overrides the former, if one of the paths in lib_paths exists. (See end
+# of this file for logic).
+lib_path = 'C:/code/kungpao/lib'
+lib_paths = ['C:/code/kungpao/lib','/home/rjonnal/code/kungpao/lib']
+
 
 #################################################################################
 # mirror configuration (look in directory specified by environment variable 
@@ -83,3 +88,15 @@ pokeMatrixFilename = '20150515171245_poke.txt'
 ctrlMatrixSVDModes = 30
 
 #################################################################################
+# If lib_paths exists and is non-empty, set lib_path to the first existing path
+# in the list.
+import os
+
+try:
+    if len(lib_paths):
+        for test in lib_paths:
+            if os.path.exists(test):
+                lib_path = test
+                break
+except Exception as e:
+    print e

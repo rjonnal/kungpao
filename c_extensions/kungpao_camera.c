@@ -194,6 +194,29 @@ void get_current_image(void * data_pointer)
 }
 
 
+long get_size_x(void)
+{
+   return 2048;
+}
+
+long get_size_y(void)
+{
+   return 2048;
+}
+
+
+void start(void){
+}
+
+void stop(void){
+}
+
+void release(void){
+}
+
+
+#endif
+
 unsigned short int a[2048*2048];          /* typical array of ints */
 
 void test(void * arr){
@@ -230,29 +253,6 @@ void change_num(short unsigned int * ptr){
 }
 
 
-
-long get_size_x(void)
-{
-   return 2048;
-}
-
-long get_size_y(void)
-{
-   return 2048;
-}
-
-
-void start(void){
-}
-
-void stop(void){
-}
-
-void release(void){
-}
-
-
-#endif
 
 static unsigned int counter, xs, xe, ys, ye, xes, xee, yes, yee, x, y, yScaled, xScaled, widthScaled;
 static float denom, xsum, ysum, scaledPixelFloat, lastImageRange, box_total;
