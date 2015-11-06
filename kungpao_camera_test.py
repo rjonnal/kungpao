@@ -21,14 +21,36 @@ if is_windows32:
     system_name = c_char_p('M_SYSTEM_SOLIOS')
     camera_filename = c_char_p('C:\\pyao_etc\\config\\dcf\\acA2040-180km-4tap-12bit_reloaded.dcf')
 
+
+c_uint16_p = POINTER(c_ushort)
+
+p_arr = np.array([10,100]).astype(np.uint16)
+c_arr = p_arr.ctypes.data_as(c_uint16_p)
+
+print p_arr,c_arr
+kcam.change_num(c_arr)
+print p_arr,c_arr
+
+sys.exit()
+
+    
 kcam.setup(system_name,camera_filename)
 
 size_x = kcam.get_size_x()
 size_y = kcam.get_size_y()
 print size_x,size_y
 im = np.zeros((size_y,size_x)).astype(np.uint16)
-im_ptr = im.ctypes.data
+im[0,0] = 13
+#im_ptr = im.ctypes.data
 
+
+im_ptr = im.ctypes.data_as(c_uint16_p)
+
+im[0,0] = 3
+kcam.test(im_ptr)
+print im[0,0], ' should not be 3'
+
+sys.exit()
 
 if True:
     kcam.start()
@@ -37,7 +59,7 @@ if True:
     ph = plt.imshow(im)
     for k in range(10):
         kcam.get_current_image(im_ptr)
-        #print im.ravel()[5000]
+        print im.ravel()[5000]
         plt.cla()
         plt.imshow(im)
         plt.pause(.001)

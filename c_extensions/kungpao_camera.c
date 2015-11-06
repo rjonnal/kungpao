@@ -10,8 +10,6 @@ typedef struct
     float box_total;
 } search_box;
 
-static unsigned short int buffer[2048*2048];
-
 
 
 #ifdef TARGET_WINDOWS
@@ -179,25 +177,59 @@ void setup(char *system_name, char *camera_filename){
     
 }
 
+
+
 void get_current_image(void * data_pointer)
 {
-    FILE *f;
-    f = fopen("test.bin","rb");
-    int n;
-    if (f){
-      n = fread(buffer,4,2048*2048,f);
-      /* int k; */
-      /* for(k = 0;k<50000;k = k + 1000){ */
-      /*   printf("%d ",buffer[k]); */
-      /* } */
-      printf("buffer[5000]: %d",buffer[5000]);
-      printf("\n");
-    }else{
-      printf("error opening file");
-    }
-    data_pointer = (void *)buffer;
-    //printf("data_ponter[5000]: %d",data_pointer[5000]);
+  //unsigned short int buffer[2048*2048];
+  FILE *f;
+  f = fopen("/home/rjonnal/code/kungpao/data/test.bin","rb");
+  int n;
+  if (f){
+    n = fread((unsigned short int *)data_pointer,2,2048*2048,f);
+  }else{
+    printf("error opening file");
+  }
+  fclose(f);
 }
+
+
+unsigned short int a[2048*2048];          /* typical array of ints */
+
+void test(void * arr){
+
+  printf("input (arr) value: %d\n",((unsigned short int *)arr)[0]);
+  printf("temp (a) initial value: %d\n",a[0]);
+  FILE *f;
+  f = fopen("/home/rjonnal/code/kungpao/data/test.bin","rb");
+  int n;
+  
+  if (f){
+    n = fread((void *)a,2,2048*2048,f);
+  }
+  printf("temp (a) fread value: %d\n",a[0]);
+  
+  arr = a;              /* p now holds base address of a */
+
+  a[0] = 17;
+  
+  printf("%d\n", ((unsigned short int *) arr)[0]);  /* get 17 back */
+
+  printf("%d\n", a[0]);  /* get 17 back */
+}
+
+
+void change_num(short unsigned int * ptr){
+  short unsigned int newarr[2];
+  newarr[0] = 7;
+  newarr[1] = 8;
+  memcpy(ptr,newarr,4);
+  //*ptr = *newarr;
+  //*ptr = *ptr + 1;
+  //ptr[0] = newarr[0];
+}
+
+
 
 long get_size_x(void)
 {
