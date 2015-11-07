@@ -22,11 +22,11 @@ system_id = 'simulator'
 # latter overrides the former, if one of the paths in XXX_paths exists. (See end
 # of this file for logic).
 #################################################################################
-# Path to libraries
-lib_path = 'C:/code/kungpao/lib'
+# Path to shared libraries
 lib_paths = ['C:/code/kungpao/lib','/home/rjonnal/code/kungpao/lib']
 #################################################################################
-# Path to 
+# Path to camera configuration files
+dcf_paths = ['C:/code/kungpao_etc/config/dcf/','/home/rjonnal/data/Dropbox/kungpao_etc/config/dcf']
 #################################################################################
 #################################################################################
 #################################################################################
@@ -105,7 +105,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-logger.info('Test')
 
 def find_path(path_list):
     ''' Return the first valid (existing) path in path_list.'''
@@ -114,3 +113,5 @@ def find_path(path_list):
             return test
     
 lib_path = find_path(lib_paths)
+
+dcf_path = find_path(dcf_paths)

@@ -26,7 +26,7 @@ system_id = 'simulator'
 lib_paths = ['C:/code/kungpao/lib','/home/rjonnal/code/kungpao/lib']
 #################################################################################
 # Path to camera configuration files
-dcf_paths = ['C:/code/kungpao_etc/config/dcf/']
+dcf_paths = ['C:/code/kungpao_etc/config/dcf/','/home/rjonnal/data/Dropbox/kungpao_etc/config/dcf']
 #################################################################################
 #################################################################################
 #################################################################################
@@ -109,8 +109,12 @@ logger = logging.getLogger(__name__)
 def find_path(path_list):
     ''' Return the first valid (existing) path in path_list.'''
     for test in path_list:
+        print test
         if os.path.exists(test):
+            print 'found'
             return test
     
 lib_path = find_path(lib_paths)
+print lib_path
 dcf_path = find_path(dcf_paths)
+print dcf_path
