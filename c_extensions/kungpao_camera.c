@@ -165,34 +165,51 @@ long get_size_y(void)
 
 #ifdef TARGET_LINUX
 
+static char data_path[100];
+static int image_index = 0;
+static unsigned short int buffer[20][2048*2048];
 void setup(char *system_name, char *camera_filename){
-    printf("kungpao_camera setup system_name: ");
-    printf(system_name);
-    printf("\n");
+  printf("kungpao_camera setup system_name: ");
+  printf(system_name);
+  printf("\n");
+  
+  strcpy(data_path,system_name);
+  
+  printf("kungpao_camera setup camera_filename: ");
+  printf(camera_filename);
+  printf("\n");
+  
+  char fn_tag[12];
+  strcpy(fn_tag,"/im_%02d.bin");
 
-    printf("kungpao_camera setup camera_filename: ");
-    printf(camera_filename);
-    printf("\n");
+  char full_fn_tag[100];
+  strcpy(full_fn_tag,data_path);
+  strcat(full_fn_tag,fn_tag);
 
-    
+  int file_read_index;
+
+  for (file_read_index=0;file_read_index<20;file_read_index++) {
+    FILE *f;
+    char fn[100];
+    sprintf(fn,full_fn_tag,file_read_index);
+    printf("Loading image data from %s\n",fn);
+    f = fopen(fn,"rb");
+    int n;
+    n = fread(buffer[file_read_index],2,2048*2048,f);
+    fclose(f);
+  }
 }
-
-
 
 void get_current_image(void * data_pointer)
 {
-  static unsigned short int buffer[2048*2048];
-  FILE *f;
-  f = fopen("/home/rjonnal/code/kungpao/data/test.bin","rb");
-  int n;
-  if (f){
-    n = fread(buffer,2,2048*2048,f);
-  }else{
-    printf("error opening file");
-  }
-  fclose(f);
-  memcpy(data_pointer,buffer,2048*2048*2);
+  printf("Calling get_current_image.\n");
+  //memcpy(data_pointer,buffer[image_index],2048*2048*2);
+  data_pointer = (void *)buffer[image_index];
+  image_index = (image_index + 1)%20;
 }
+
+
+
 
 long get_size_x(void)
 {
@@ -214,46 +231,7 @@ void stop(void){
 void release(void){
 }
 
-
 #endif
-
-unsigned short int a[2048*2048];          /* typical array of ints */
-
-void test(void * arr){
-
-  printf("input (arr) value: %d\n",((unsigned short int *)arr)[0]);
-  printf("temp (a) initial value: %d\n",a[0]);
-  FILE *f;
-  f = fopen("/home/rjonnal/code/kungpao/data/test.bin","rb");
-  int n;
-  
-  if (f){
-    n = fread((void *)a,2,2048*2048,f);
-  }
-  printf("temp (a) fread value: %d\n",a[0]);
-  
-  arr = a;              /* p now holds base address of a */
-
-  a[0] = 17;
-  
-  printf("%d\n", ((unsigned short int *) arr)[0]);  /* get 17 back */
-
-  printf("%d\n", a[0]);  /* get 17 back */
-}
-
-
-//void change_num(short unsigned int * ptr){
-void change_num(void * ptr){
-  static short unsigned int newarr[2];
-  newarr[0] = 7;
-  newarr[1] = 8;
-  memcpy(ptr,newarr,4);
-  //*ptr = *newarr;
-  //*ptr = *ptr + 1;
-  //ptr[0] = newarr[0];
-}
-
-
 
 static unsigned int counter, xs, xe, ys, ye, xes, xee, yes, yee, x, y, yScaled, xScaled, widthScaled;
 static float denom, xsum, ysum, scaledPixelFloat, lastImageRange, box_total;

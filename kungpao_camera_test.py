@@ -13,7 +13,7 @@ is_windows32 = sys.platform=='win32'
 
 if is_linux:
     kcam = cdll.LoadLibrary(os.path.join(kconfig.lib_path,'kungpao_camera.so'))
-    system_name = c_char_p('WHATEVER')
+    system_name = c_char_p('/home/rjonnal/Dropbox/pyao_etc/data/original_2048x2048')
     camera_filename = c_char_p('WHATEVER')
 
 if is_windows32:
@@ -23,16 +23,6 @@ if is_windows32:
 
 
 c_uint16_p = POINTER(c_ushort)
-
-p_arr = np.array([10,100]).astype(np.uint16)
-c_arr = p_arr.ctypes.data_as(c_uint16_p)
-
-print p_arr,c_arr
-kcam.change_num(c_arr)
-print p_arr,c_arr
-
-
-    
 kcam.setup(system_name,camera_filename)
 
 size_x = kcam.get_size_x()
@@ -40,18 +30,20 @@ size_y = kcam.get_size_y()
 im = np.zeros((size_y,size_x)).astype(np.uint16)
 im_ptr = im.ctypes.data_as(c_uint16_p)
 
-kcam.get_current_image(im_ptr)
-plt.subplot(1,2,1)
-plt.imshow(im)
-plt.colorbar()
-vprof = np.max(im,axis=1)
-ypos = np.argmax(vprof)
-prof = im[ypos,:]
-plt.axhline(ypos)
-plt.subplot(1,2,2)
-plt.plot(prof)
-
-plt.show()
+for k in range(30):
+    kcam.get_current_image(im_ptr)
+    plt.subplot(1,2,1)
+    plt.cla()
+    plt.imshow(im)
+    #plt.colorbar()
+    vprof = np.max(im,axis=1)
+    ypos = np.argmax(vprof)
+    prof = im[ypos,:]
+    plt.axhline(ypos)
+    plt.subplot(1,2,2)
+    plt.cla()
+    plt.plot(prof)
+    plt.pause(.1)
 
 sys.exit()
 

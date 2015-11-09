@@ -18,21 +18,21 @@ system_id = 'simulator'
 
 #################################################################################
 # Paths
-# Specify a single path with 'XXX_path', or a list of paths with 'XXX_paths'. The
-# latter overrides the former, if one of the paths in XXX_paths exists. (See end
-# of this file for logic).
-#################################################################################
-# Path to shared libraries
+#
+# Specify a list of paths with XXX_paths. The software will use the first location
+# it finds in the list. If the location (i.e. the directory) exists, but lacks
+# the correct files, an error will occur, even if the correct files are located
+# in another directory specified later in the list. (See end of this file for logic).
+#
+# lib:  kungpao shared libraries (but not, e.g. vendor libraries)
+# dcf:  camera files
+# ref:  reference coordinates
+# dm:   mirror configuration files
+# ctrl: poke matrices
+# log:  log files
 lib_paths = ['C:/code/kungpao/lib','/home/rjonnal/code/kungpao/lib']
-#################################################################################
-# Path to camera configuration files
 dcf_paths = ['C:/code/kungpao_etc/config/dcf/','/home/rjonnal/data/Dropbox/kungpao_etc/config/dcf']
 #################################################################################
-#################################################################################
-#################################################################################
-#################################################################################
-
-
 
 
 #################################################################################
@@ -113,5 +113,6 @@ def find_path(path_list):
             return test
     
 lib_path = find_path(lib_paths)
-
 dcf_path = find_path(dcf_paths)
+
+
