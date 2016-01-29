@@ -1,5 +1,6 @@
 from ctypes import *
 import numpy as np
+from time import time
 
 def info(numpy_array):
     print numpy_array
@@ -12,12 +13,19 @@ c_uint16_p = POINTER(c_ushort)
 im_ptr = im.ctypes.data_as(c_uint16_p)
 #im_ptr = im.ctypes.data
 
-print im
-ctex.get_buffer(im_ptr)
-print im
-ctex.copy_buffer(im_ptr)
-print im
 
+def timeit(func,arg,N=100):
+    t0 = time()
+    for k in range(N):
+        func(arg)
+    t = time()
+    print 'elapsed time: %f ms'%(t-t0)
+
+#ctex.get_buffer(im_ptr)
+#ctex.copy_buffer(im_ptr)
+
+timeit(ctex.get_buffer,im_ptr)
+timeit(ctex.copy_buffer,im_ptr)
 
 
 
