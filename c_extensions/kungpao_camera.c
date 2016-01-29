@@ -208,6 +208,9 @@ void get_current_image(void * data_pointer)
   image_index = (image_index + 1)%20;
 }
 
+void print_buffer_region(void){
+  printf("%d\n",buffer[5][10000]);
+}
 
 
 

@@ -27,11 +27,23 @@ kcam.setup(system_name,camera_filename)
 
 size_x = kcam.get_size_x()
 size_y = kcam.get_size_y()
-im = np.zeros((size_y,size_x)).astype(np.uint16)
+im = np.ascontiguousarray(np.zeros((size_y,size_x)).astype(np.uint16),dtype=np.uint16)
 im_ptr = im.ctypes.data_as(c_uint16_p)
+
+
+def info(something):
+    print something
+    print type(something)
+    print dir(something)
+
+#info(im.ctypes.data_as)
+#sys.exit()
+
 
 for k in range(30):
     kcam.get_current_image(im_ptr)
+    print im.ravel()[10000],' ',
+    kcam.print_buffer_region()
     plt.subplot(1,2,1)
     plt.cla()
     plt.imshow(im)
