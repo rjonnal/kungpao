@@ -200,13 +200,16 @@ void setup(char *system_name, char *camera_filename){
   }
 }
 
-void get_current_image(void * data_pointer)
-{
-  printf("Calling get_current_image.\n");
-  //memcpy(data_pointer,buffer[image_index],2048*2048*2);
-  data_pointer = (void *)buffer[image_index];
+void get_current_image(unsigned short int * destination_buffer){
+  int k;
+  for (k=0;k<2048*2048;k++){
+    destination_buffer[k] = buffer[image_index][k];
+  }
   image_index = (image_index + 1)%20;
 }
+
+
+
 
 void print_buffer_region(void){
   printf("%d\n",buffer[5][10000]);

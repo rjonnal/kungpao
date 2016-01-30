@@ -24,8 +24,9 @@ def timeit(func,arg,N=100):
 #ctex.get_buffer(im_ptr)
 #ctex.copy_buffer(im_ptr)
 
-timeit(ctex.get_buffer,im_ptr)
-timeit(ctex.copy_buffer,im_ptr)
+N = 1000000
+timeit(ctex.get_buffer,im_ptr,N)
+timeit(ctex.copy_buffer,im_ptr,N)
 
 
 
