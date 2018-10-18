@@ -14,7 +14,9 @@ void *myThreadFun(void *vargp)
     printf("Printing GeeksQuiz from Thread \n");
     return NULL;
 }
-  
+
+
+
 int main()
 {
     pthread_t tid;
