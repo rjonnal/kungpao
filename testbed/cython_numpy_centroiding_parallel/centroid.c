@@ -9,7 +9,8 @@
             "-march=native"
         ], 
         "extra_link_args": [
-            "-fopenmp"
+            "-fopenmp", 
+            "-march=native"
         ], 
         "name": "centroid", 
         "sources": [

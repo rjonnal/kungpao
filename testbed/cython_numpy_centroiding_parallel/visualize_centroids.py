@@ -58,6 +58,6 @@ for k in range(200):
     plt.plot(refx_vec,refy_vec,'g+',markersize=8)
     #plt.xlim(xlim)
     #plt.ylim(ylim)
-    plt.show()#pause(.5)
+    plt.pause(.00001)
     #assert (pp_xcentroids==xcentroids).all() and (pp_ycentroids==ycentroids).all()
 

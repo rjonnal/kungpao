@@ -38,7 +38,7 @@ def build_searchbox_edges():
     return x1_vec,x2_vec,y1_vec,y2_vec
 
 
-spots_images = glob.glob('/home/rjonnal/code/kungpao/data/spots/spots*.npy')[:5]
+spots_images = glob.glob('/home/rjonnal/code/kungpao/data/spots/spots*.npy')[:50]
 x1v,x2v,y1v,y2v = build_searchbox_edges()
 xcentroids = np.zeros((len(x1v)),dtype=np.float)
 ycentroids = np.zeros((len(x1v)),dtype=np.float)
@@ -52,7 +52,7 @@ for fn in spots_images:
     xcentroids,ycentroids = centroid.compute_centroids(im,x1v,x2v,y1v,y2v,xcentroids,ycentroids,True)
     times.append(time()-t0)
     t0 = time()
-    pp_xcentroids,pp_ycentroids = pp_centroid.compute_centroids(im,x1v,x2v,y1v,y2v)
+    pp_xcentroids,pp_ycentroids = pp_centroid.compute_centroids_vector(im,x1v,x2v,y1v,y2v)
     pp_times.append(time()-t0)
     print pp_xcentroids[0],xcentroids[0]
     
