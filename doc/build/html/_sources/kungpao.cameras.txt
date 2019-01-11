@@ -1,6 +1,0 @@
-============
-kungpao API
-============
-
-.. automodule:: kungpao.cameras
-   :members: Camera

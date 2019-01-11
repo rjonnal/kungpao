@@ -1,5 +1,6 @@
 import numpy as np
 import time
+import centroid
 from kungpao import kungpao_config as kcfg
 from kungpao.cameras import SimulatedCamera
 from PyQt5.QtCore import (pyqtSignal, QMutex, QMutexLocker, QPoint, QSize, Qt,
@@ -100,11 +101,16 @@ class Loop(QThread):
 
             #image = QImage(QSize(512,512), QImage.Format_RGB32)
             #arr = np.round(np.random.rand(512,512)*255).astype(np.uint8)
-            self.arr = self.bmpscale(self.cam.get_image())
-            sy,sx = self.arr.shape
-            image = QImage(self.arr,sx,sy,QImage.Format_Grayscale8)
-            self.mutex.lock()
-            self.mutex.unlock()
+            self.spots = self.cam.get_image()
+
+            
+
+            
+            self.bmp_spots = self.bmpscale(self.spots)
+            sy,sx = self.bmp_spots.shape
+            image = QImage(self.bmp_spots,sx,sy,QImage.Format_Grayscale8)
+            #self.mutex.lock()
+            #self.mutex.unlock()
 
             self.spots_image.emit(image, 1.0)
             t = time.time()-self.t0
