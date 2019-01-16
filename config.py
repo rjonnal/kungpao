@@ -19,7 +19,12 @@ image_height_px = 1024
 bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
-search_box_radius = 10
+search_box_half_width = 10
+reference_coordinates_filename = './etc/ref/coords.txt'
+
+
+
+
 
 
 # #################################################################################

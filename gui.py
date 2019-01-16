@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import centroid
-from kungpao import kungpao_config as kcfg
+from kungpao import config as kcfg
 from kungpao.cameras import SimulatedCamera
 from PyQt5.QtCore import (pyqtSignal, QMutex, QMutexLocker, QPoint, QSize, Qt,
                           QThread, QWaitCondition, QLine)
@@ -17,7 +17,6 @@ class Loop(QThread):
 
         self.mutex = QMutex()
         self.condition = QWaitCondition()
-        self.resultSize = QSize()
         self.colormap = []
 
         self.abort = False
