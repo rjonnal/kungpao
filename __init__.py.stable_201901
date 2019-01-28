@@ -31,33 +31,10 @@ class Sensor(QThread):
     def __init__(self,camera,parent=None):
         super(QThread,self).__init__(parent)
         self.update_rate = 30.0
-        self.cam = camera
-        self.spots = self.cam.get_image()
-        self.downsample = 2
-        try:
-            self.cmax = np.load('.gui_settings/cmax.npy')
-        except Exception as e:
-            print e
-            self.cmax = kcfg.contrast_maximum
-        try:
-            self.cmin = np.load('.gui_settings/cmin.npy')
-        except Exception as e:
-            print e
-            self.cmin = kcfg.contrast_minimum
-        
-    def write_settings(self):
-        np.save('.gui_settings/cmax.npy',self.cmax)
-        np.save('.gui_settings/cmin.npy',self.cmin)
-        
         
     def update(self):
         print "sensor update at %0.3f"%(time.time()%1000)
-        self.spots = self.cam.get_image()
-        self.bmp_spots = self.bmpscale(self.spots)
 
-    def bmpscale(self,arr):
-        return np.round(np.clip((arr[::self.downsample,::self.downsample]-self.cmin)/(self.cmax-self.cmin),0,1)*255).astype(np.uint8)
-        
     def run(self):
         print "sensor thread started"
         timer = QTimer()
@@ -91,8 +68,6 @@ class Loop:
     def start(self):
         self.sensor.start()
         self.mirror.start()
-
-        
 
         
 class Gui(QWidget):
