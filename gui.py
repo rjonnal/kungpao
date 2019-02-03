@@ -102,9 +102,6 @@ class Loop(QThread):
             #arr = np.round(np.random.rand(512,512)*255).astype(np.uint8)
             self.spots = self.cam.get_image()
 
-            
-
-            
             self.bmp_spots = self.bmpscale(self.spots)
             sy,sx = self.bmp_spots.shape
             image = QImage(self.bmp_spots,sx,sy,QImage.Format_Grayscale8)
@@ -161,19 +158,6 @@ class Gui(QWidget):
             self.loop.cmin = self.loop.cmin - 20
         elif event.key() == Qt.Key_Plus:
             self.loop.cmin = self.loop.cmin + 20
-        elif event.key() == Qt.Key_Left:
-            self.scroll(-ScrollStep, 0)
-        elif event.key() == Qt.Key_Right:
-            self.scroll(+ScrollStep, 0)
-        elif event.key() == Qt.Key_Down:
-            self.scroll(0, -ScrollStep)
-        elif event.key() == Qt.Key_Z:
-            self.loop.iteration = 0
-            self.loop.t0 = time.time()
-        elif event.key() == Qt.Key_R:
-            self.loop.iteration_step = -self.loop.iteration_step
-        elif event.key() == Qt.Key_Up:
-            self.scroll(0, +ScrollStep)
         else:
             super(Gui, self).keyPressEvent(event)
 

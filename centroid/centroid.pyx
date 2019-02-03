@@ -16,8 +16,6 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                         np.ndarray[np.float_t,ndim=1] y_out,
                         estimate_background = True):
     cdef np.int_t n_spots = len(sb_x1_vec)
-    #cdef np.ndarray x_out = np.zeros([n_spots],dtype=np.float)
-    #cdef np.ndarray y_out = np.zeros([n_spots],dtype=np.float)
     cdef np.int_t k
     cdef np.float_t intensity
     cdef np.float_t background

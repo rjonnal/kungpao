@@ -19,10 +19,36 @@ image_height_px = 1024
 bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
-search_box_half_width = 10
 reference_coordinates_filename = './etc/ref/coords.txt'
+lenslet_pitch_m = 500e-6
+lenslet_focal_length_m = 30.0e-3
+pixel_size_m = 5.5e-6
+beam_diameter_m = 10e-3
+show_boxes = True
+show_slopes = True
+interface_scale_factor = 0.5
+wavelength_m = 840e-9
+estimate_background = True
+search_box_half_width = 10
 
+rigorous_iteration = False
+if rigorous_iteration:
+    # First, calculate the PSF FWHM for the lenslets:
+    import math
+    lenslet_psf_fwhm_m = 1.22*wavelength_m*lenslet_focal_length_m/lenslet_pitch_m
+    # Now see how many pixels this is:
+    lenslet_psf_fwhm_px = lenslet_psf_fwhm_m/pixel_size_m 
 
+    diffraction_limited_width_px = round(math.ceil(lenslet_psf_fwhm_px))
+    if diffraction_limited_width_px%2==0:
+        diffraction_limited_width_px+=1
+    diffraction_limited_half_width_px = (diffraction_limited_width_px-1)//2
+
+    iterative_centroiding_step = 1
+    centroiding_iterations = int(round((search_box_half_width-diffraction_limited_half_width_px)//iterative_centroiding_step))
+else:
+    iterative_centroiding_step = 2
+    centroiding_iterations = 4
 
 
 
