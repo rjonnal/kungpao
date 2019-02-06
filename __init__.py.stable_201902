@@ -9,11 +9,10 @@ from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget,
                              QHBoxLayout, QVBoxLayout, QGraphicsScene,
                              QLabel,QGridLayout, QCheckBox, QFrame, QGroupBox,
                              QSpinBox,QDoubleSpinBox)
-from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap, qRgb, QPen, QBitmap
+from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap, qRgb, QPen
 import time
 import os
 import psutil
-from matplotlib import pyplot as plt
 
 process = psutil.Process(os.getpid())
 
@@ -41,10 +40,7 @@ class SearchBoxes:
     def get_search_box_half_width(self):
         return self.half_width
 
-    def get_lenslet_index(self,x,y):
-        d = np.sqrt((self.x-x)**2+(self.y-y)**2)
-        return np.argmin(d)
-        
+
     def grow(self):
         '''Grow searchboxes'''
         if (self.x1.min>0 and self.x2.max()<self.xmax-1 and
@@ -181,7 +177,7 @@ class Mirror(QThread):
 
     def __init__(self,parent=None):
         super(QThread,self).__init__(parent)
-        self.update_rate = kcfg.mirror_update_rate
+        self.update_rate = 500.0
         self.count = 0.0
         self.t0 = time.time()
         self.action_functions = []
@@ -194,9 +190,7 @@ class Mirror(QThread):
         
     def update(self):
         self.count = self.count + 1
-        
-        
-        
+
     def run(self):
         timer = QTimer()
         timer.timeout.connect(self.update)
@@ -205,8 +199,6 @@ class Mirror(QThread):
 
     def get_fps(self):
         return float(self.count)/(time.time()-self.t0)
-
-    
 
 
 class Loop:
@@ -226,13 +218,13 @@ class Loop:
 class Gui(QWidget):
     def __init__(self,loop):
         super(Gui,self).__init__()
-        self.spots_pixmap = QPixmap()
-        self.single_spot_pixmap = QPixmap()
-        
+        self.pixmap = QPixmap()
         self.loop = loop
         self.loop.start()
         self.loop.sensor.sensor_state.connect(self.update_pixmap)
         self.bit_depth = kcfg.bit_depth
+        self.cmax_abs = 2**self.bit_depth-1
+
         self.scale_factor = kcfg.interface_scale_factor
         self.downsample = int(round(1.0/self.scale_factor))
         if not self.scale_factor==1.0/float(self.downsample):
@@ -242,62 +234,40 @@ class Gui(QWidget):
             self.cmax = np.loadtxt('.gui_settings/cmax.txt')
         except Exception as e:
             print e
-            self.cmax = float(kcfg.contrast_maximum)
+            self.cmax = kcfg.contrast_maximum
         try:
             self.cmin = np.loadtxt('.gui_settings/cmin.txt')
         except Exception as e:
             print e
-            self.cmin = float(kcfg.contrast_minimum)
+            self.cmin = kcfg.contrast_minimum
 
-        self.slope_line_color = QColor(*kcfg.slope_line_color)
+        self.slope_line_color = kcfg.slope_line_color
         self.slope_line_thickness = kcfg.slope_line_thickness
-        self.slope_line_pen = QPen()
-        self.slope_line_pen.setColor(self.slope_line_color)
-
-        self.search_box_color = QColor(*kcfg.search_box_color)
+        self.search_box_color = kcfg.search_box_color
         self.search_box_thickness = kcfg.search_box_thickness
-        self.search_box_pen = QPen()
-        self.search_box_pen.setColor(self.search_box_color)
 
-        self.single_spot_color = QColor(*kcfg.single_spot_color)
-        self.single_spot_thickness = kcfg.single_spot_thickness
-        self.single_spot_pen = QPen()
-        self.single_spot_pen.setColor(self.single_spot_color)
-        
-        self.spots_painter = QPainter(self.spots_pixmap)
+        r,g,b,a = self.search_box_color
+        self.search_box_painter = QPainter(self.pixmap)
+        pen = QPen()
+        pen.setColor(QColor(r,g,b,a))
+        #pen.setWidth(kcfg.search_box_thickness)
+        self.search_box_painter.setPen(pen)
 
-        self.single_spot_index = 0
-        
-        #self.bmp_spots = self.bmpscale(self.loop.sensor.spots,self.downsample,self.cmin,self.cmax)
-        
+        self.bmp_spots = self.bmpscale(self.loop.sensor.spots)
         self.show_search_boxes = kcfg.show_search_boxes
         self.show_slope_lines = kcfg.show_slope_lines
         self.boolean_functions = []
         self.boolean_functions.append((self.get_show_search_boxes,self.set_show_search_boxes,'Show &search boxes'))
         self.boolean_functions.append((self.get_show_slope_lines,self.set_show_slope_lines,'Show slope &lines'))
         self.numerical_functions = []
-
-        self.numerical_functions.append((self.get_spots_cmin,self.set_spots_cmin,'Spots contrast min',(-2**kcfg.bit_depth,2**kcfg.bit_depth,1)))
-        self.numerical_functions.append((self.get_spots_cmax,self.set_spots_cmax,'Spots contrast max',(-2**kcfg.bit_depth,2**kcfg.bit_depth,1)))
         self.action_functions = []
-        self.action_functions.append((self.shutdown,'&Quit'))
+        self.action_functions.append((self.quit,'&Quit'))
         
         self.initUi()
 
 
     def quit(self):
         sys.exit()
-
-
-    def set_spots_cmax(self,val):
-        self.cmax = float(val)
-    def get_spots_cmax(self):
-        return self.cmax
-        
-    def set_spots_cmin(self,val):
-        self.cmin = float(val)
-    def get_spots_cmin(self):
-        return self.cmin
         
     def set_show_search_boxes(self,val):
         self.show_search_boxes = val
@@ -310,28 +280,13 @@ class Gui(QWidget):
 
     def get_show_slope_lines(self):
         return self.show_slope_lines
-
-
-    def select_single_spot(self,click):
-        x = click.x()*self.downsample
-        y = click.y()*self.downsample
-        self.single_spot_index = self.loop.sensor.search_boxes.get_lenslet_index(x,y)
         
     def initUi(self):
         self.layout = QHBoxLayout()
-
         self.spots_label = QLabel()
-        self.spots_label.mousePressEvent = self.select_single_spot
-        self.spots_label.setPixmap(self.spots_pixmap)
+        self.spots_label.setPixmap(self.pixmap)
         self.layout.addWidget(self.spots_label)
 
-        images = QVBoxLayout()
-        images.setAlignment(Qt.AlignTop)
-        self.single_spot_label = QLabel()
-        self.single_spot_label.setPixmap(self.single_spot_pixmap)
-        images.addWidget(self.single_spot_label)
-        self.layout.addLayout(images)
-        
         controls = QVBoxLayout()
         sensor_controls = self.make_control_frame(self.loop.sensor,'Sensor')
         controls.addWidget(sensor_controls)
@@ -396,44 +351,56 @@ class Gui(QWidget):
         return group_box
 
     
-    def bmpscale(self,arr,downsample,cmin,cmax):
-        return np.round(np.clip((arr[::downsample,::downsample]-cmin)/(cmax-cmin),0,1)*255).astype(np.uint8)
+    def draw_clims(self):
+        sy,sx = self.bmp.shape
+        lheight = float(self.cmin)/float(self.cmax_abs)*sy
+        rheight = float(self.cmax)/float(self.cmax_abs)*sy
+
+        if self.cmax>=self.cmin:
+            fill_value = (255,255,255,255)
+        else:
+            fill_value = (0,0,0,255)
+
+        width = sx//50
+        print lheight
+        
+        if lheight<0:
+            self.draw_rect(0,0,width-5,lheight,fill_value)
+        else:
+            self.draw_rect(0,sy-lheight,width-5,lheight,fill_value)
+            
+        if rheight<0:
+            self.draw_rect(sx-width,0,width-5,rheight,fill_value)
+        else:
+            self.draw_rect(sx-width,sy-rheight,width-5,rheight,fill_value)
+    
+    def bmpscale(self,arr):
+        return np.round(np.clip((arr[::self.downsample,::self.downsample]-self.cmin)/(self.cmax-self.cmin),0,1)*255).astype(np.uint8)
         
     def update_pixmap(self, xslopes, yslopes, data):
         # receives slopes and image from sensor signal
         # first, convert the numpy image data into a QImage
-        k = self.single_spot_index
-        self.bmp = self.bmpscale(data,self.downsample,self.cmin,self.cmax)
-        single = data[self.loop.sensor.search_boxes.y1[k]:self.loop.sensor.search_boxes.y2[k]+1,
-                      self.loop.sensor.search_boxes.x1[k]:self.loop.sensor.search_boxes.x2[k]+1]
-        self.single_bmp = self.bmpscale(single,1,self.cmin,self.cmax)
-
+        self.bmp = self.bmpscale(data)
         sy,sx = self.bmp.shape
-        n_bytes = self.bmp.nbytes
-        bytes_per_line = int(n_bytes/sy)
-        image = QImage(self.bmp,sx,sy,bytes_per_line,QImage.Format_Grayscale8)
-        self.spots_pixmap = QPixmap.fromImage(image)
-        #self.spots_pixmap.convertFromImage(image)
-        ssy,ssx = self.single_bmp.shape
-        n_bytes = self.single_bmp.nbytes
-        bytes_per_line = int(n_bytes/ssy)
-        image = QImage(self.single_bmp,ssx,ssy,bytes_per_line,QImage.Format_Grayscale8)
-        
-        self.single_spot_pixmap = QPixmap.fromImage(image)
-        #self.single_spot_pixmap.convertFromImage(image)
+        image = QImage(self.bmp,sx,sy,QImage.Format_Grayscale8)
+        self.pixmap = QPixmap.fromImage(image)
+        self.pixmap_scale = self.scale_factor
         self.update()
-
+        
     def paintEvent(self, event):
+        #painter = QPainter(self)
+        #painter.fillRect(self.rect(), Qt.black)
         if self.show_search_boxes:
             self.draw_search_boxes()
-        if self.show_slope_lines:
+        if False:#self.show_slope_lines:
             self.draw_slopes()
-        self.spots_label.setPixmap(self.spots_pixmap)
-        self.single_spot_label.setPixmap(self.single_spot_pixmap.scaled(256,256))
+        if False:
+            self.draw_clims()
+        #painter.drawPixmap(QPoint(), self.pixmap)
+        self.spots_label.setPixmap(self.pixmap)
+        
         
     def draw_slopes(self,magnification=50):
-        self.spots_painter.begin(self.spots_pixmap)
-        self.spots_painter.setPen(self.slope_line_pen)
         for xc,yc,xr,yr in zip(self.loop.sensor.x_centroids,
                                self.loop.sensor.y_centroids,
                                self.loop.sensor.x_ref,self.loop.sensor.y_ref):
@@ -443,45 +410,41 @@ class Gui(QWidget):
             ycs = yc*self.scale_factor
             dx = xcs-xrs
             dy = ycs-yrs
-            self.spots_painter.drawLine(QLine(xrs,yrs,xrs+dx*magnification,yrs+dy*magnification))
-        self.spots_painter.end()
+            self.draw_line(xrs,yrs,xrs+dx*magnification,yrs+dy*magnification)
         
     def draw_search_boxes(self):
         #width = self.loop.sensor.search_boxes.half_width*2*self.scale_factor
-        self.spots_painter.begin(self.spots_pixmap)
-        self.spots_painter.setPen(self.search_box_pen)
-        for spot_index,(x1a,y1a,x2a,y2a) in enumerate(zip(self.loop.sensor.search_boxes.x1,
-                                                          self.loop.sensor.search_boxes.y1,
-                                                          self.loop.sensor.search_boxes.x2,
-                                                          self.loop.sensor.search_boxes.y2)):
+        self.search_box_painter.begin(self.pixmap)
+        for x1a,y1a,x2a,y2a in zip(self.loop.sensor.search_boxes.x1,
+                                   self.loop.sensor.search_boxes.y1,
+                                   self.loop.sensor.search_boxes.x2,
+                                   self.loop.sensor.search_boxes.y2):
             x1 = x1a*self.scale_factor
             y1 = y1a*self.scale_factor
             x2 = x2a*self.scale_factor
             y2 = y2a*self.scale_factor
             width = float(x2a-x1a)*self.scale_factor
-            if spot_index==self.single_spot_index:
-                self.spots_painter.setPen(self.single_spot_pen)
-            self.spots_painter.drawRect(x1,y1,width,width)
-            if spot_index==self.single_spot_index:
-                self.spots_painter.setPen(self.search_box_pen)
-        self.spots_painter.end()
+            self.search_box_painter.drawRect(x1,y1,width,width)
+        self.search_box_painter.end()
+        self.draw_square(x1,y1,width,self.search_box_color,self.search_box_thickness)
 
     def draw_square(self,x1,y1,wid,rgba=(0,127,255,127),thickness=1.0):
-        painter = QPainter(self.spots_pixmap)
+        r,g,b,a = rgba
+        painter = QPainter(self.pixmap)
         #pen = QPen()
         #pen.setColor(self.
-        painter.setPen(self.search_box_color)
+        painter.setPen(QColor(r,g,b,a))
         painter.drawRect(x1,y1,wid,wid)
 
     def draw_rect(self,x1,y1,wid,hei,rgba=(255,255,255,127)):
         r,g,b,a = rgba
-        painter = QPainter(self.spots_pixmap)
+        painter = QPainter(self.pixmap)
         painter.setPen(QColor(r,g,b,a))
         painter.drawRect(x1,y1,wid,hei)
 
     def draw_line(self,x1,y1,x2,y2,rgba=(127,255,127,127)):
         r,g,b,a = rgba
-        painter = QPainter(self.spots_pixmap)
+        painter = QPainter(self.pixmap)
         painter.setPen(QColor(r,g,b,a))
         painter.drawLine(QLine(x1,y1,x2,y2))
         

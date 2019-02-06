@@ -19,17 +19,29 @@ image_height_px = 1024
 bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
-reference_coordinates_filename = './etc/ref/coords.txt'
+reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt'
 lenslet_pitch_m = 500e-6
 lenslet_focal_length_m = 30.0e-3
-pixel_size_m = 5.5e-6
+pixel_size_m = 11e-6
 beam_diameter_m = 10e-3
-show_boxes = True
-show_slopes = True
 interface_scale_factor = 0.5
 wavelength_m = 840e-9
 estimate_background = True
-search_box_half_width = 10
+background_correction = +3.5
+search_box_half_width = 18
+search_box_color = (127,127,255,255)
+search_box_thickness = 10
+show_search_boxes = True
+show_slope_lines = True
+slope_line_thickness = 1.0
+slope_line_color = (0,255,0,255)
+single_spot_color = (255,63,63,255)
+single_spot_thickness = 1.0
+mirror_update_rate = 100.0
+mirror_n_actuators = 97
+
+#search_box_half_width_max = 30
+search_box_half_width_max = int(lenslet_pitch_m/pixel_size_m)//2
 
 rigorous_iteration = False
 if rigorous_iteration:

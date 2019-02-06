@@ -1,12 +1,13 @@
 import centroid
 from matplotlib import pyplot as plt
-from kungpao.config import kungpao_config as kcfg
+import kungpao.config as kcfg
 import glob,sys,os
 import numpy as np
 from time import time
 
 def build_sensor_searchbox_mask():
-    ref = kcfg.REFERENCE_COORDINATES
+    ref_fn = kcfg.reference_coordinates_filename
+    ref = np.loadtxt(ref_fn)
     refx_vec = ref[:,0]
     refy_vec = ref[:,1]
     sb_width = kcfg.SEARCH_BOX_WIDTH_PX
@@ -26,8 +27,9 @@ def build_sensor_searchbox_mask():
     return mask
 
 def build_searchbox_edges():
-    ref = kcfg.REFERENCE_COORDINATES
-    sb_width = kcfg.SEARCH_BOX_WIDTH_PX
+    ref_fn = kcfg.reference_coordinates_filename
+    ref = np.loadtxt(ref_fn)
+    sb_width = kcfg.search_box_half_width*2+1
     refx_vec = np.round(ref[:,0]).astype(np.int16)
     refy_vec = np.round(ref[:,1]).astype(np.int16)
     x1_vec = refx_vec - sb_width//2
@@ -47,7 +49,7 @@ for fn in spots_images:
     print fn
     im = np.load(fn)
     t0 = time()
-    xcentroids,ycentroids = centroid.compute_centroids(im,x1v,x2v,y1v,y2v,xcentroids,ycentroids,True)
+    xcentroids,ycentroids = centroid.compute_centroids(im,x1v,x2v,y1v,y2v,xcentroids,ycentroids,True,100)
     times.append(time()-t0)
     
     #assert (pp_xcentroids==xcentroids).all() and (pp_ycentroids==ycentroids).all()
