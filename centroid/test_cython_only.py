@@ -43,13 +43,23 @@ spots_images = sorted(glob.glob('/home/rjonnal/code/kungpao/data/spots/spots*.np
 x1v,x2v,y1v,y2v = build_searchbox_edges()
 xcentroids = np.zeros((len(x1v)),dtype=np.float)
 ycentroids = np.zeros((len(x1v)),dtype=np.float)
+total_intensity = np.zeros((len(x1v)),dtype=np.float)
+maximum_intensity = np.zeros((len(x1v)),dtype=np.float)
+minimum_intensity = np.zeros((len(x1v)),dtype=np.float)
+background_intensity = np.zeros((len(x1v)),dtype=np.float)
 
 times = []
 for fn in spots_images:
     print fn
     im = np.load(fn)
     t0 = time()
-    xcentroids,ycentroids = centroid.compute_centroids(im,x1v,x2v,y1v,y2v,xcentroids,ycentroids,True,100)
+    xcentroids,ycentroids = centroid.compute_centroids(im,x1v,x2v,y1v,y2v,
+                                                       xcentroids,
+                                                       ycentroids,
+                                                       total_intensity,
+                                                       maximum_intensity,
+                                                       minimum_intensity,
+                                                       background_intensity)
     times.append(time()-t0)
     
     #assert (pp_xcentroids==xcentroids).all() and (pp_ycentroids==ycentroids).all()

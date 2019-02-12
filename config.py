@@ -19,7 +19,12 @@ image_height_px = 1024
 bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
-reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt'
+#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt.FOOBAR'
+#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt'
+
+reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190210211425_coords.txt'
+reference_mask_filename = '/home/rjonnal/code/kungpao/etc/ref/reference_mask.txt'
+reference_n_measurements = 10
 lenslet_pitch_m = 500e-6
 lenslet_focal_length_m = 30.0e-3
 pixel_size_m = 11e-6
@@ -30,15 +35,33 @@ estimate_background = True
 background_correction = +3.5
 search_box_half_width = 18
 search_box_color = (127,127,255,255)
-search_box_thickness = 10
+search_box_thickness = 1.0
 show_search_boxes = True
 show_slope_lines = True
-slope_line_thickness = 1.0
-slope_line_color = (0,255,0,255)
+slope_line_thickness = 4.0
+slope_line_color = (0,255,0,128)
 single_spot_color = (255,63,63,255)
-single_spot_thickness = 1.0
+single_spot_thickness = 3.0
+sensor_update_rate = 50.0
 mirror_update_rate = 100.0
 mirror_n_actuators = 97
+mirror_flat_filename = '/home/rjonnal/code/kungpao/etc/dm/flat.txt'
+mirror_mask_filename = '/home/rjonnal/code/kungpao/etc/dm/mirror_mask.txt'
+mirror_current_max = 1.0
+mirror_current_min = -1.0
+mirror_settling_time_s = 0.001*0
+poke_current_max = 0.5
+poke_current_min = -0.5
+poke_n_currents = 5
+poke_filename = '/home/rjonnal/code/kungpao/etc/ctrl/poke.txt'
+
+sensor_fps_fmt = '%0.2f Hz (Sensor)'
+mirror_fps_fmt = '%0.2f Hz (Mirror)'
+wavefront_error_fmt = '%0.2f mrad RMS (Error)'
+tip_fmt = '%0.4f mrad (Tip)'
+tilt_fmt = '%0.4f mrad (Tilt)'
+
+centroiding_num_threads = 1
 
 #search_box_half_width_max = 30
 search_box_half_width_max = int(lenslet_pitch_m/pixel_size_m)//2
@@ -59,8 +82,8 @@ if rigorous_iteration:
     iterative_centroiding_step = 1
     centroiding_iterations = int(round((search_box_half_width-diffraction_limited_half_width_px)//iterative_centroiding_step))
 else:
-    iterative_centroiding_step = 2
-    centroiding_iterations = 4
+    iterative_centroiding_step = 4
+    centroiding_iterations = 1
 
 
 

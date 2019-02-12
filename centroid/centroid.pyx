@@ -14,8 +14,13 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                         np.ndarray[np.int16_t,ndim=1] sb_y2_vec,
                         np.ndarray[np.float_t,ndim=1] x_out,
                         np.ndarray[np.float_t,ndim=1] y_out,
+                        np.ndarray[np.float_t,ndim=1] total_intensity,
+                        np.ndarray[np.float_t,ndim=1] maximum_intensity,
+                        np.ndarray[np.float_t,ndim=1] minimum_intensity,
+                        np.ndarray[np.float_t,ndim=1] background_intensity,
                         estimate_background = True,
-                        background_correction = 0.0):
+                        background_correction = 0.0,
+                        num_threads = 4):
 
     cdef np.int_t n_spots = len(sb_x1_vec)
     cdef np.int_t k
@@ -25,6 +30,8 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
     cdef np.float_t yprod
     cdef np.int_t x
     cdef np.int_t y
+    cdef np.float_t imax
+    cdef np.float_t imin
     cdef np.float_t pixel
     cdef np.float_t edge_counter
     cdef np.int_t estimate_background_t
@@ -34,7 +41,8 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
     else:
         estimate_background_t = 0
     background_correction_t = float(background_correction)
-    for k in prange(n_spots,nogil=True):
+    #for k in prange(n_spots,nogil=True,num_threads=num_threads):
+    for k in range(n_spots):
         if estimate_background_t:
             edge_counter = 0.0
             background = 0.0
@@ -58,6 +66,8 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
         intensity = 0.0
         xprod = 0.0
         yprod = 0.0
+        imin = 2**15
+        imax = -2**15
         for x in range(sb_x1_vec[k],sb_x2_vec[k]+1):
             for y in range(sb_y1_vec[k],sb_y2_vec[k]+1):
                 pixel = float(spots_image[y,x])-(background+background_correction_t)
@@ -67,8 +77,16 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                 xprod = xprod + pixel*x
                 yprod = yprod + pixel*y
                 intensity = intensity + pixel
+                if pixel<imin:
+                    imin=pixel
+                if pixel>imax:
+                    imax=pixel
         if intensity==0.0:
             intensity = 1.0
+        total_intensity[k] = intensity
+        background_intensity[k] = background
+        maximum_intensity[k] = imax
+        minimum_intensity[k] = imin
         x_out[k] = xprod/intensity
         y_out[k] = yprod/intensity
     return x_out,y_out
