@@ -19,12 +19,18 @@ image_height_px = 1024
 bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
-#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt.FOOBAR'
-#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt'
 
-reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190210211425_coords.txt'
+
+simulated_camera_image_directory = '/home/rjonnal/code/kungpao/data/spots/'
+#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/coords.txt'
+#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190210211425_coords.txt'
+
+reference_directory = '/home/rjonnal/code/kungpao/etc/ref/'
 reference_mask_filename = '/home/rjonnal/code/kungpao/etc/ref/reference_mask.txt'
 reference_n_measurements = 10
+
+poke_directory = '/home/rjonnal/code/kungpao/etc/ctrl'
+
 lenslet_pitch_m = 500e-6
 lenslet_focal_length_m = 30.0e-3
 pixel_size_m = 11e-6
@@ -32,32 +38,50 @@ beam_diameter_m = 10e-3
 interface_scale_factor = 0.5
 wavelength_m = 840e-9
 estimate_background = True
-background_correction = +3.5
+background_correction = +43.5
 search_box_half_width = 18
-search_box_color = (127,127,255,255)
-search_box_thickness = 1.0
+
+active_search_box_color = (63,127,255,255)
+inactive_search_box_color = (0,63,127,255)
+
+search_box_thickness = 2.0
 show_search_boxes = True
 show_slope_lines = True
-slope_line_thickness = 4.0
-slope_line_color = (0,255,0,128)
+
+slope_line_thickness = 3.0
+slope_line_color = (200,0,0,64)
+
 single_spot_color = (255,63,63,255)
-single_spot_thickness = 3.0
-sensor_update_rate = 50.0
+single_spot_thickness = 2.0
+
+sensor_update_rate = 10.0
+sensor_filter_lenslets = False
+
 mirror_update_rate = 100.0
+
 mirror_n_actuators = 97
 mirror_flat_filename = '/home/rjonnal/code/kungpao/etc/dm/flat.txt'
 mirror_mask_filename = '/home/rjonnal/code/kungpao/etc/dm/mirror_mask.txt'
 mirror_current_max = 1.0
 mirror_current_min = -1.0
 mirror_settling_time_s = 0.001*0
+
 poke_current_max = 0.5
 poke_current_min = -0.5
-poke_n_currents = 5
+poke_n_current_steps = 5
 poke_filename = '/home/rjonnal/code/kungpao/etc/ctrl/poke.txt'
+ctrl_dictionary_max_size = 10
 
+loop_n_control_modes = 50
+loop_gain = 0.3
+loop_loss = 0.01
+
+spots_threshold = 200.0
+
+ui_fps_fmt = '%0.2f Hz (UI)'
 sensor_fps_fmt = '%0.2f Hz (Sensor)'
 mirror_fps_fmt = '%0.2f Hz (Mirror)'
-wavefront_error_fmt = '%0.2f mrad RMS (Error)'
+wavefront_error_fmt = '%0.1f urad RMS (Error)'
 tip_fmt = '%0.4f mrad (Tip)'
 tilt_fmt = '%0.4f mrad (Tilt)'
 
@@ -82,8 +106,8 @@ if rigorous_iteration:
     iterative_centroiding_step = 1
     centroiding_iterations = int(round((search_box_half_width-diffraction_limited_half_width_px)//iterative_centroiding_step))
 else:
-    iterative_centroiding_step = 4
-    centroiding_iterations = 1
+    iterative_centroiding_step = 2
+    centroiding_iterations = 3
 
 
 

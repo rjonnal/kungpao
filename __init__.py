@@ -8,15 +8,25 @@ from PyQt5.QtCore import QThread, QTimer, pyqtSignal, Qt, QPoint, QLine
 from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget,
                              QHBoxLayout, QVBoxLayout, QGraphicsScene,
                              QLabel,QGridLayout, QCheckBox, QFrame, QGroupBox,
-                             QSpinBox,QDoubleSpinBox)
-from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap, qRgb, QPen, QBitmap, QPalette
+                             QSpinBox,QDoubleSpinBox,QSizePolicy,QFileDialog,
+                             QErrorMessage)
+from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap, qRgb, QPen, QBitmap, QPalette, QIcon
 import time
 import os
 import psutil
 from matplotlib import pyplot as plt
 import datetime
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
 process = psutil.Process(os.getpid())
+
+def error_message(message):
+    error_dialog = QErrorMessage()
+    error_dialog.setWindowModality(Qt.WindowModal)
+    error_dialog.showMessage(message)
+    error_dialog.exec_()
+
 
 def now_string():
     return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
@@ -40,6 +50,31 @@ def colortable(colormap_name):
     for row in xrange(cmap.shape[0]):
         table.append(qRgb(cmap[row,0],cmap[row,1],cmap[row,2]))
     return table
+
+
+class PlotCanvas(FigureCanvas):
+ 
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+ 
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+ 
+        FigureCanvas.setSizePolicy(self,
+                QSizePolicy.Expanding,
+                QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.plot()
+ 
+ 
+    def plot(self):
+        data = np.random.randn(25)
+        ax = self.figure.add_subplot(111)
+        ax.plot(data, 'r-')
+        ax.set_title('PyQt Matplotlib Example')
+        self.draw()
+
 
 class SearchBoxes:
 
@@ -191,7 +226,15 @@ class Component(QThread):
             
 
 class Sensor(Component):
-
+    # Currently this subclasses Component, which means that it runs on its
+    # own clock/thread. The disadvantage of this approach is that its
+    # update rate has to be set such that each camera frame is new (i.e.
+    # it shouldn't update faster than the exposure/transfer cycle. We
+    # should think about re-implementing this so that it initializes its
+    # own camera object and passes its update function to the camera thread
+    # to be called on exposure, as described in this example:
+    # https://pgi-jcns.fz-juelich.de/portal/pages/using-c-from-python.html
+    
     def __init__(self,camera,**kwargs):#update_rate=30.0,fps_window=100,initial_paused=False,parent=None):
         super(Sensor,self).__init__(**kwargs)#update_rate,fps_window,initial_paused,parent)
         
@@ -222,7 +265,9 @@ class Sensor(Component):
         self.maximum_intensity = np.zeros(self.search_boxes.n)
         self.minimum_intensity = np.zeros(self.search_boxes.n)
         self.background_intensity = np.zeros(self.search_boxes.n)
+        self.active_lenslets = np.ones(self.n_lenslets)
         self.n_iterations = kcfg.centroiding_iterations
+        self.filter_lenslets = kcfg.sensor_filter_lenslets
         self.error = 0.0
         self.tilt = 0.0
         self.tip = 0.0
@@ -232,8 +277,10 @@ class Sensor(Component):
         self.show_search_boxes = kcfg.show_search_boxes
         self.show_slope_lines = kcfg.show_slope_lines
         self.boolean_functions = []
-        self.boolean_functions.append((self.get_estimate_background,self.set_estimate_background,'Estimate &background'))
+        self.boolean_functions.append((self.get_estimate_background,self.set_estimate_background,'Estimate background'))
+        self.boolean_functions.append((self.get_filter_lenslets,self.set_filter_lenslets,'Filter lenslets'))
         self.boolean_functions.append((self.get_paused,self.set_paused,'Paused'))
+        self.boolean_functions.append((self.cam.get_opacity,self.cam.set_opacity,'Opacity'))
         self.numerical_functions = []
         self.numerical_functions.append((self.get_background_correction,self.set_background_correction,'Background correction',(-2**kcfg.bit_depth,2**kcfg.bit_depth,.5)))
         self.numerical_functions = self.numerical_functions + self.search_boxes.numerical_functions
@@ -242,11 +289,25 @@ class Sensor(Component):
         self.action_functions.append((self.auto_center,'Auto center'))
         self.action_functions.append((self.record_reference,'Record reference'))
         print 'Computing sensor maximum rate...'
-        self.max_rate = self.get_max_rate(500)
+        self.max_rate = self.get_max_rate(50)
         print 'Maximum rate is %0.2f Hz.'%self.max_rate
 
+    def set_active_lenslets(self):
+        #self.active_lenslets[:] = 0
+        #self.active_lenslets[np.where(self.maximum_intensity-self.minimum_intensity>kcfg.spots_threshold)[0]] = 1
+        if self.filter_lenslets:
+            self.active_lenslets[:] = 1
+            thresh = self.total_intensity.mean()-self.total_intensity.std()*3
+            self.active_lenslets[np.where(self.total_intensity<thresh)]=0
+
+    def get_filter_lenslets(self):
+        return self.filter_lenslets
+
+    def set_filter_lenslets(self,val):
+        self.filter_lenslets = val
+            
     def get_error(self):
-        return self.error*1000
+        return self.error*1e6
 
     def get_tilt(self):
         return self.tilt*1000
@@ -254,13 +315,14 @@ class Sensor(Component):
     def get_tip(self):
         return self.tip*1000
 
-    def auto_center(self,window_spots=False):
+    def auto_center(self,window_spots=False,spot_half_width=5):
         self.pause()
         # make a simulated spots image
         sim = np.zeros((kcfg.image_height_px,kcfg.image_width_px))
         for x,y in zip(self.x_ref,self.y_ref):
             ry,rx = int(round(y)),int(round(x))
-            sim[ry-1:ry+2,rx-1:rx+2] = 1.0
+            sim[ry-spot_half_width:ry+spot_half_width+1,
+                rx-spot_half_width:rx+spot_half_width+1] = 1.0
 
         spots = self.cam.get_image()
 
@@ -278,7 +340,19 @@ class Sensor(Component):
         
         # cross-correlate it with a spots image to find the most likely offset
         nxc = np.abs(np.fft.ifft2(np.fft.fft2(spots)*np.conj(np.fft.fft2(sim))))
+
+        #plt.imshow(nxc,interpolation='none')
+        #plt.savefig('nxc.png',dpi=300)
+        #sys.exit()
+
+        
+        sy,sx = nxc.shape
         ymax,xmax = np.unravel_index(np.argmax(nxc),nxc.shape)
+        if ymax>sy//2:
+            ymax = ymax-sy
+        if xmax>sx//2:
+            xmax = xmax-sx
+        
         new_x_ref = self.x_ref+xmax
         new_y_ref = self.y_ref+ymax
         self.search_boxes = SearchBoxes(new_x_ref,new_y_ref,kcfg.search_box_half_width)
@@ -298,7 +372,7 @@ class Sensor(Component):
         self.x_ref = np.array(xcent).mean(0)
         self.y_ref = np.array(ycent).mean(0)
         self.search_boxes = SearchBoxes(self.x_ref,self.y_ref,kcfg.search_box_half_width)
-        outfn = prepend('./coords.txt',now_string())
+        outfn = os.path.join(kcfg.reference_directory,prepend('coords.txt',now_string()))
         refxy = np.array((self.x_ref,self.y_ref)).T
         np.savetxt(outfn,refxy,fmt='%0.2f')
         self.unpause()
@@ -360,16 +434,14 @@ class Sensor(Component):
         self.x_centroids = xr
         self.y_centroids = yr
 
-        
-        
         self.x_slopes = (self.x_centroids-self.x_ref)*self.pixel_size_m/self.lenslet_focal_length_m
         self.y_slopes = (self.y_centroids-self.y_ref)*self.pixel_size_m/self.lenslet_focal_length_m
-        self.error = np.sqrt(np.var(self.x_slopes)+np.var(self.y_slopes))
+        self.error = np.sqrt(np.var(self.x_slopes[np.where(self.active_lenslets)[0]])+np.var(self.y_slopes[np.where(self.active_lenslets)[0]]))
         self.tilt = np.mean(self.x_slopes)
         self.tip = np.mean(self.y_slopes)
         self.x_slopes-=self.tilt
         self.y_slopes-=self.tip
-        
+        self.set_active_lenslets()
         self.ping.emit()
         
         
@@ -377,12 +449,12 @@ class Sensor(Component):
         #print(process.memory_info().rss)//1024//1024
         return self.fps
 
-    def run(self):
-        print "sensor thread started"
-        timer = QTimer()
-        timer.timeout.connect(self.update)
-        timer.start(1.0/self.update_rate*1000.0)
-        self.exec_()
+    # def run(self):
+    #     print "sensor thread started"
+    #     timer = QTimer()
+    #     timer.timeout.connect(self.update)
+    #     timer.start(1.0/self.update_rate*1000.0)
+    #     self.exec_()
 
 
 class Mirror(Component):
@@ -405,7 +477,7 @@ class Mirror(Component):
         self.action_functions.append((self.flatten,'&Flatten miror'))
         self.action_functions.append((self.replace_flat,'Replace flat'))
         print 'Computing mirror maximum rate...'
-        self.max_rate = self.get_max_rate(5000)
+        self.max_rate = self.get_max_rate(500)
         print 'Maximum rate is %0.2f Hz.'%self.max_rate
 
     def flatten(self):
@@ -437,21 +509,101 @@ class Mirror(Component):
 
 class Loop:
     def __init__(self,sensor,mirror,parent=None):
+        self.n_modes = kcfg.loop_n_control_modes
+        self.gain = kcfg.loop_gain
+        self.loss = kcfg.loop_loss
         self.count = 0
         self.t0 = time.time()
         self.paused = False
         self.closed = False
         self.sensor = sensor
         self.mirror = mirror
+        self.active_lenslets = np.ones(sensor.active_lenslets.shape,dtype=np.int)
         self.sensor.ping.connect(self.update)
         self.action_functions = []
         self.numerical_functions = []
+        
+        self.numerical_functions.append((self.get_gain,self.set_gain,'Loop gain',(0.0,1.0,.01),self.has_poke))
+        self.numerical_functions.append((self.get_loss,self.set_loss,'Loop loss',(0.0,1.0,.01),self.has_poke))
+        
+        self.numerical_functions.append((self.get_n_modes,self.set_n_modes,'Control modes',(1,kcfg.mirror_n_actuators,1),self.has_poke))
         self.boolean_functions = []
-        self.boolean_functions.append((self.get_closed,self.set_closed,'Closed'))
+        self.boolean_functions.append((self.get_closed,self.set_closed,'&Closed',self.has_poke))
         self.boolean_functions.append((self.get_paused,self.set_paused,'Paused'))
+        self.action_functions.append((self.load_poke,'Load poke'))
         self.action_functions.append((self.run_poke,'Run poke'))
         self.action_functions.append((self.step,'Step'))
+        self.poke = None
+
+    def get_gain(self):
+        return self.gain
+
+    def set_gain(self,val):
+        self.gain = val
         
+    def get_loss(self):
+        return self.loss
+
+    def set_loss(self,val):
+        self.loss = val
+        
+    def get_n_modes(self):
+        if self.poke is None:
+            return kcfg.loop_n_control_modes
+        else:
+            return self.poke.n_modes
+
+    def set_n_modes(self,val):
+        self.poke.n_modes = val
+        self.poke.invert(mask=self.active_lenslets)
+
+    def get_cutoff_cond(self):
+        try:
+            return self.poke.cutoff_cond
+        except Exception as e:
+            return np.nan
+        
+    def get_full_cond(self):
+        try:
+            return self.poke.full_cond
+        except Exception as e:
+            return np.nan
+        
+    def has_poke(self):
+        return self.poke is not None
+
+    def load_poke(self):
+        options = QFileDialog.Options()
+        #options |= QFileDialog.DontUseNativeDialog
+        poke_filename, _ = QFileDialog.getOpenFileName(
+                        None,
+                        "Please select a poke file.",
+                        kcfg.poke_directory,
+                        "Text Files (*.txt)",
+                        options=options)
+
+        try:
+            poke = np.loadtxt(poke_filename)
+        except IOError as ioe:
+            error_message('Could not find %s.'%poke_filename)
+            return
+        
+        py,px = poke.shape
+
+        try:
+            assert py==2*self.sensor.n_lenslets
+        except AssertionError as ae:
+            error_message('Poke matrix has %d rows, but %d expected.'%(py,2*self.sensor.n_lenslets))
+            return
+        try:
+            assert px==self.mirror.n_actuators
+        except AssertionError as ae:
+            error_message('Poke matrix has %d columns, but %d expected.'%(px,2*self.mirror.n_actuators))
+            return
+
+        self.poke = Poke(poke)
+
+            
     def set_closed(self,val):
         self.closed = val
             
@@ -487,12 +639,22 @@ class Loop:
         self.count = self.count + 1
 
     def step(self):
-        pass
-    
+        if self.closed and self.has_poke():
+            if not all(self.active_lenslets==sensor.active_lenslets):
+                self.active_lenslets[:] = sensor.active_lenslets[:]
+                self.poke.invert(mask=self.active_lenslets)
+            xs = self.sensor.x_slopes[np.where(self.active_lenslets)[0]]
+            ys = self.sensor.y_slopes[np.where(self.active_lenslets)[0]]
+            slope_vec = np.hstack((xs,ys))
+
+            command = self.gain * np.dot(self.poke.ctrl,slope_vec)
+            command = self.mirror.command*(1-self.loss) - command
+            self.mirror.command = command
+            
     def run_poke(self):
         cmin = kcfg.poke_current_min
         cmax = kcfg.poke_current_max
-        n_currents = kcfg.poke_n_currents
+        n_currents = kcfg.poke_n_current_steps
         currents = np.linspace(cmin,cmax,n_currents)
         self.sensor.pause()
         self.mirror.pause()
@@ -521,32 +683,110 @@ class Loop:
         poke = np.vstack((x_response,y_response))
         poke_fn = prepend(kcfg.poke_filename,now_string())
         np.savetxt(poke_fn,poke)
-        self.poke = Poke(poke_fn)
-        self.poke.invert()
+        self.poke = Poke(poke)
 
-class Poke:
-    def __init__(self,filename):
-        self.poke = np.loadtxt(filename)
+    def get_n_ctrl_stored(self):
+        try:
+            return self.poke.n_ctrl_stored
+        except Exception as e:
+            return 0
+
         
-    def invert(self,n_modes=None,subtract_mean=False):
-        t0 = time.time()
-        double_n_lenslets,n_actuators = self.poke.shape
+        
+        
+class Poke:
+    def __init__(self,poke_matrix):
+        self.poke = poke_matrix
+        self.n_modes = kcfg.loop_n_control_modes
+        self.n_ctrl_stored = 0
+        self.ctrl_dict = {}
+        self.ctrl_key_list = []
+        self.invert()
 
-        if n_modes==None:
-            n_modes = n_actuators
+    def mask_to_key1(self,mask):
+        if mask is None:
+            return ''
+        else:
+            return ''.join(['%d'%k for k in list(mask)])
+
+    def mask_to_key(self,mask):
+        if mask is None:
+            return 'None'
+        else:
+            return '_'.join(['%d'%idx for idx in np.where(mask==0)[0]])+'_%d'%self.n_modes
+
+    def get_stored_ctrl(self,mask):
+        key = self.mask_to_key(mask)
+        try:
+            out = self.ctrl_dict[key]
+        except KeyError as ke:
+            out = None
+
+    def store_ctrl(self,mask,ctrl):
+        key = self.mask_to_key(mask)
+        if key in self.ctrl_dict.keys():
+            return
+        self.ctrl_dict[key] = ctrl
+        self.ctrl_key_list.append(key)
+        self.n_ctrl_stored+=1
+        self.print_dict_info()
+        assert self.n_ctrl_stored==len(self.ctrl_dict.keys())
+        assert self.n_ctrl_stored==len(self.ctrl_key_list)
+
+    def print_dict_info(self):
+        print 'N stored:',self.n_ctrl_stored
+        print 'Current dictionary:'
+        print self.ctrl_dict.keys()
+        print 'Current key list:'
+        print self.ctrl_key_list
+        print
+
+        
+    def trim_ctrl_dict(self):
+        if self.n_ctrl_stored<=kcfg.ctrl_dictionary_max_size:
+            return
+        else:
+            n_to_remove = self.n_ctrl_stored-kcfg.ctrl_dictionary_max_size
+            print 'Removing %d'%n_to_remove
+            for k in range(n_to_remove):
+                key = self.ctrl_key_list[k]
+                self.print_dict_info()
+                print 'Key to remove: %s'%key
+                del self.ctrl_dict[key]
+                self.n_ctrl_stored-=1
+                self.ctrl_key_list.remove(key)
+        
+    def invert(self,subtract_mean=False,mask=None):
+        self.ctrl = self.get_stored_ctrl(mask)
+        if self.ctrl is not None:
+            return
+        
+        t0 = time.time()
+
+        poke = self.poke.copy()
+
+        #mask = np.round(np.random.rand(poke.shape[0]//2)).astype(np.int)
+        if mask is not None:
+            double_mask = np.hstack((mask,mask))
+            poke = poke[np.where(double_mask)[0],:]
+
+        double_n_lenslets,n_actuators = poke.shape
 
         if subtract_mean:
             # subtract mean influence across actuators from
             # each actuator's influence
             # transpose, broadcast, transpose back:
-            m_poke = np.mean(self.poke,axis=1)
-            self.poke = (self.poke.T - m_poke).T
+            m_poke = np.mean(poke,axis=1)
+            poke = (poke.T - m_poke).T
 
-        U,s,V = np.linalg.svd(self.poke)
+        U,s,V = np.linalg.svd(poke)
 
+
+        self.full_cond = (s[0]/s).max()
+        self.cutoff_cond = s[0]/s[self.n_modes-1]
         # zero upper modes
-        if n_modes<n_actuators:
-            s[n_modes:] = 0
+        if self.n_modes<n_actuators:
+            s[self.n_modes:] = 0
 
         term1 = V.T
         term2 = np.zeros([n_actuators,double_n_lenslets])
@@ -554,7 +794,24 @@ class Poke:
         term3 = U.T
         ctrlmat = np.dot(np.dot(term1,term2),term3)
         dt = time.time()-t0
-        return ctrlmat
+
+        sanity_check = False
+        if sanity_check:
+            # double check the explicit Moore-Penrose pseudoinverse
+            # above with LAPACK implementation (pinv)
+            cutoff_cond = s[n_modes]/s[0]
+            test = np.linalg.pinv(poke,cutoff_cond)
+            if np.allclose(test,ctrlmat):
+                print 'Pseudoinverse is correct.'
+                sys.exit()
+            else:
+                print 'Pseudoinverse is incorrect.'
+                sys.exit()
+            
+        self.ctrl = ctrlmat
+        print 'SVD %d modes %0.4e'%(self.n_modes,self.cutoff_cond)
+        self.store_ctrl(mask,self.ctrl)
+        self.trim_ctrl_dict()
 
 class Indicator(QLabel):
     def __init__(self,fmt,func,signed=False):
@@ -579,19 +836,24 @@ class Indicator(QLabel):
 class Gui(QWidget):
     def __init__(self,loop):
         super(Gui,self).__init__()
+        self.fps = 0.0
+        self.fps_interval = 2.0
+        self.counter = 0
+        self.timer = QTimer()
+        self.timer.setInterval(1000.0*self.fps_interval)
+        self.timer.timeout.connect(self.compute_fps)
+        self.timer.start()
+        
         self.spots_pixmap = QPixmap()
         self.single_spot_pixmap = QPixmap()
         self.mirror_pixmap = QPixmap()
-        
+
         self.loop = loop
-        self.loop.start()
-        
-        self.loop.sensor.ping.connect(self.update_spots_pixmap)
-        self.loop.mirror.ping.connect(self.update_mirror_pixmap)
         
         self.bit_depth = kcfg.bit_depth
         self.scale_factor = kcfg.interface_scale_factor
         self.downsample = int(round(1.0/self.scale_factor))
+        self.setWindowIcon(QIcon('./icons/kungpao.png'))
         if not self.scale_factor==1.0/float(self.downsample):
             sys.exit('kungpao.config.scale_factor must be 1.0, 0.5, 0.25, 0.2, or 0.1')
         
@@ -606,33 +868,16 @@ class Gui(QWidget):
             print e
             self.cmin = float(kcfg.contrast_minimum)
 
-        self.slope_line_color = QColor(*kcfg.slope_line_color)
-        self.slope_line_thickness = kcfg.slope_line_thickness
-        self.slope_line_pen = QPen()
-        self.slope_line_pen.setColor(self.slope_line_color)
-        self.slope_line_pen.setWidth(self.slope_line_thickness)
-        
-        self.search_box_color = QColor(*kcfg.search_box_color)
-        self.search_box_thickness = kcfg.search_box_thickness
-        self.search_box_pen = QPen()
-        self.search_box_pen.setColor(self.search_box_color)
-        self.search_box_pen.setWidth(self.search_box_thickness)
-
-        self.single_spot_color = QColor(*kcfg.single_spot_color)
-        self.single_spot_thickness = kcfg.single_spot_thickness
-        self.single_spot_pen = QPen()
-        self.single_spot_pen.setColor(self.single_spot_color)
-        self.single_spot_pen.setWidth(self.single_spot_thickness)
-        self.spots_painter = QPainter(self.spots_pixmap)
 
         self.mirror_color_table = colortable('jet')
         
         self.single_spot_index = 0
-        
+
         #self.bmp_spots = self.bmpscale(self.loop.sensor.spots,self.downsample,self.cmin,self.cmax)
         
         self.show_search_boxes = kcfg.show_search_boxes
         self.show_slope_lines = kcfg.show_slope_lines
+
         self.boolean_functions = []
         self.boolean_functions.append((self.get_show_search_boxes,self.set_show_search_boxes,'Show &search boxes'))
         self.boolean_functions.append((self.get_show_slope_lines,self.set_show_slope_lines,'Show slope &lines'))
@@ -641,8 +886,45 @@ class Gui(QWidget):
         self.numerical_functions.append((self.get_spots_cmax,self.set_spots_cmax,'Spots contrast max',(-2**kcfg.bit_depth,2**kcfg.bit_depth,1.0)))
         self.action_functions = []
         self.action_functions.append((self.shutdown,'&Quit'))
+        
+        self.active_check_list = []
+        
+        self.init_pens()
         self.initUi()
 
+        self.loop.sensor.ping.connect(self.update_spots_pixmap)
+        self.loop.mirror.ping.connect(self.update_mirror_pixmap)
+        self.loop.start()
+        
+
+    def init_pens(self):
+        self.slope_line_color = QColor(*kcfg.slope_line_color)
+        self.slope_line_thickness = kcfg.slope_line_thickness
+        self.slope_line_pen = QPen()
+        self.slope_line_pen.setColor(self.slope_line_color)
+        self.slope_line_pen.setWidth(self.slope_line_thickness)
+        
+        self.search_box_thickness = kcfg.search_box_thickness
+
+        self.active_search_box_color = QColor(*kcfg.active_search_box_color)
+        self.active_search_box_pen = QPen()
+        self.active_search_box_pen.setColor(self.active_search_box_color)
+        self.active_search_box_pen.setWidth(self.search_box_thickness)
+        
+        self.inactive_search_box_color = QColor(*kcfg.inactive_search_box_color)
+        self.inactive_search_box_pen = QPen()
+        self.inactive_search_box_pen.setColor(self.inactive_search_box_color)
+        self.inactive_search_box_pen.setWidth(self.search_box_thickness)
+        
+        self.single_spot_color = QColor(*kcfg.single_spot_color)
+        self.single_spot_thickness = kcfg.single_spot_thickness
+        self.single_spot_pen = QPen()
+        self.single_spot_pen.setColor(self.single_spot_color)
+        self.single_spot_pen.setWidth(self.single_spot_thickness)
+        
+        self.spots_painter = QPainter(self.spots_pixmap)
+        
+        
     def set_spots_cmax(self,val):
         self.cmax = float(val)
         
@@ -685,10 +967,6 @@ class Gui(QWidget):
         images = QVBoxLayout()
         images.setAlignment(Qt.AlignTop)
         self.single_spot_label = QLabel()
-        # palette = self.single_spot_label.palette()
-        # sscolor = QColor(*kcfg.single_spot_color)
-        # palette.setColor(QPalette.Foreground,sscolor)
-        # self.single_spot_label.setPalette(palette)
         self.single_spot_label.setPixmap(self.single_spot_pixmap)
         images.addWidget(self.single_spot_label)
         self.mirror_label = QLabel()
@@ -710,12 +988,16 @@ class Gui(QWidget):
         controls.addWidget(ui_controls,1,1)
 
         self.indicators = []
+        self.indicators.append(Indicator(kcfg.ui_fps_fmt,self.get_fps))
         self.indicators.append(Indicator(kcfg.sensor_fps_fmt,self.loop.sensor.get_fps))
         self.indicators.append(Indicator(kcfg.mirror_fps_fmt,self.loop.mirror.get_fps))
         self.indicators.append(Indicator(kcfg.wavefront_error_fmt,self.loop.sensor.get_error))
         self.indicators.append(Indicator(kcfg.tip_fmt,self.loop.sensor.get_tip,True))
         self.indicators.append(Indicator(kcfg.tilt_fmt,self.loop.sensor.get_tilt,True))
         self.indicators.append(Indicator('%0.2f ADU',lambda: self.loop.sensor.total_intensity.mean()))
+        self.indicators.append(Indicator('%0.2e (full condition)',self.loop.get_full_cond))
+        self.indicators.append(Indicator('%0.2e (cutoff condition)',self.loop.get_cutoff_cond))
+        self.indicators.append(Indicator('%d (control matrices stored)',self.loop.get_n_ctrl_stored))
         
         indicator_box = QGroupBox('Indicators')
         layout = QVBoxLayout()
@@ -725,13 +1007,12 @@ class Gui(QWidget):
         indicator_box.setLayout(layout)
         controls.addWidget(indicator_box,0,2)
         
-        
         self.layout.addLayout(controls)
 
         self.setWindowTitle("kungpao")
         self.resize(1200, self.loop.sensor.spots.shape[0]*self.scale_factor)
         self.setLayout(self.layout)
-
+        
     def make_control_frame(self,obj,label=''):
         group_box = QGroupBox(label)
         layout = QVBoxLayout()
@@ -740,6 +1021,10 @@ class Gui(QWidget):
         try:
             for tup in obj.action_functions:
                 pb = QPushButton(tup[1])
+                try:
+                    self.active_check_list.append((pb,tup[2]))
+                except Exception as e:
+                    pass
                 pb.clicked.connect(tup[0])
                 layout.addWidget(pb)
                 idx+=1
@@ -748,6 +1033,10 @@ class Gui(QWidget):
         try:
             for tup in obj.boolean_functions:
                 cb = QCheckBox(tup[2])
+                try:
+                    self.active_check_list.append((cb,tup[3]))
+                except Exception as e:
+                    pass
                 cb.setChecked(tup[0]())
                 cb.stateChanged.connect(tup[1])
                 layout.addWidget(cb)
@@ -775,6 +1064,10 @@ class Gui(QWidget):
                     sb.valueChanged[float].connect(tup[1])
                 box.addWidget(sb)
                 layout.addLayout(box)
+                try:
+                    self.active_check_list.append((sb,tup[4]))
+                except Exception as e:
+                    pass
                 idx+=1
         except Exception as e:
             pass
@@ -822,7 +1115,19 @@ class Gui(QWidget):
         self.mirror_pixmap = QPixmap.fromImage(image)
         #self.update()
 
+    def compute_fps(self):
+        self.fps = float(self.counter)/float(self.fps_interval)
+        self.counter = 0
+
+    def get_fps(self):
+        return self.fps
+
+    def activate_widgets(self):
+        for wid,func in self.active_check_list:
+            wid.setEnabled(func())
+        
     def paintEvent(self, event):
+        self.counter = self.counter + 1
         if self.show_search_boxes:
             self.draw_search_boxes()
         if self.show_slope_lines:
@@ -832,6 +1137,7 @@ class Gui(QWidget):
         self.mirror_label.setPixmap(self.mirror_pixmap.scaled(256,256))
         for ind in self.indicators:
             ind.update()
+        self.activate_widgets()
         
     def draw_slopes(self,magnification=50):
         self.spots_painter.begin(self.spots_pixmap)
@@ -851,47 +1157,26 @@ class Gui(QWidget):
     def draw_search_boxes(self):
         #width = self.loop.sensor.search_boxes.half_width*2*self.scale_factor
         self.spots_painter.begin(self.spots_pixmap)
-        self.spots_painter.setPen(self.search_box_pen)
         for spot_index,(x1a,y1a,x2a,y2a) in enumerate(zip(self.loop.sensor.search_boxes.x1,
                                                           self.loop.sensor.search_boxes.y1,
                                                           self.loop.sensor.search_boxes.x2,
                                                           self.loop.sensor.search_boxes.y2)):
+            if spot_index==self.single_spot_index:
+                self.spots_painter.setPen(self.single_spot_pen)
+            elif self.loop.sensor.active_lenslets[spot_index]:
+                self.spots_painter.setPen(self.active_search_box_pen)
+            else:
+                self.spots_painter.setPen(self.inactive_search_box_pen)
             x1 = x1a*self.scale_factor
             y1 = y1a*self.scale_factor
             x2 = x2a*self.scale_factor
             y2 = y2a*self.scale_factor
             width = float(x2a-x1a)*self.scale_factor
-            if spot_index==self.single_spot_index:
-                self.spots_painter.setPen(self.single_spot_pen)
             self.spots_painter.drawRect(x1,y1,width,width)
-            if spot_index==self.single_spot_index:
-                self.spots_painter.setPen(self.search_box_pen)
         self.spots_painter.end()
-
-    def draw_square(self,x1,y1,wid,rgba=(0,127,255,127),thickness=1.0):
-        painter = QPainter(self.spots_pixmap)
-        #pen = QPen()
-        #pen.setColor(self.
-        painter.setPen(self.search_box_color)
-        painter.drawRect(x1,y1,wid,wid)
-
-    def draw_rect(self,x1,y1,wid,hei,rgba=(255,255,255,127)):
-        r,g,b,a = rgba
-        painter = QPainter(self.spots_pixmap)
-        painter.setPen(QColor(r,g,b,a))
-        painter.drawRect(x1,y1,wid,hei)
-
-    def draw_line(self,x1,y1,x2,y2,rgba=(127,255,127,127)):
-        r,g,b,a = rgba
-        painter = QPainter(self.spots_pixmap)
-        painter.setPen(QColor(r,g,b,a))
-        painter.drawLine(QLine(x1,y1,x2,y2))
         
     def keyPressEvent(self, event):
         modifiers = QApplication.keyboardModifiers()
-        print modifiers
-        print event.key()
-        print
         if event.key() == Qt.Key_Q:
             self.shutdown()
         elif event.key() == Qt.Key_Minus:
@@ -907,13 +1192,17 @@ class Gui(QWidget):
         elif event.key() == Qt.Key_PageDown:
             self.loop.sensor.search_boxes.shrink()
         elif event.key() == Qt.Key_I:
-            self.loop.sensor.search_boxes.up()
+            if modifiers==Qt.ControlModifier:
+                self.loop.sensor.search_boxes.up()
         elif event.key() == Qt.Key_M:
-            self.loop.sensor.search_boxes.down()
+            if modifiers==Qt.ControlModifier:
+                self.loop.sensor.search_boxes.down()
         elif event.key() == Qt.Key_K:
-            self.loop.sensor.search_boxes.right()
+            if modifiers==Qt.ControlModifier:
+                self.loop.sensor.search_boxes.right()
         elif event.key() == Qt.Key_J:
-            self.loop.sensor.search_boxes.left()
+            if modifiers==Qt.ControlModifier:
+                self.loop.sensor.search_boxes.left()
         else:
             super(Gui, self).keyPressEvent(event)
 
