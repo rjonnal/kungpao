@@ -1,6 +1,12 @@
-from distutils.core import setup
-from distutils.extension import Extension
+try:
+    from setuptools import setup
+    from setuptools import Extension
+except ImportError:
+    from distutils.core import setup
+    from distutils.extension import Extension
+    
 from Cython.Build import cythonize
+import numpy
 
 ext_modules = [
     Extension(
@@ -16,4 +22,5 @@ ext_modules = [
 setup(
     name='centroid-parallel',
     ext_modules=cythonize(ext_modules),
+    include_dirs=[numpy.get_include()]
 )

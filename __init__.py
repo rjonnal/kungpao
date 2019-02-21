@@ -94,6 +94,7 @@ class SearchBoxes:
         self.numerical_functions.append((self.get_search_box_half_width,self.set_search_box_half_width,'Search box half width',(1,kcfg.search_box_half_width_max,1)))
         
     def set_search_box_half_width(self,val):
+        print 'setting to %d'%val
         self.set_half_width(val)
 
     def get_search_box_half_width(self):
@@ -477,7 +478,7 @@ class Mirror(Component):
         self.action_functions.append((self.flatten,'&Flatten miror'))
         self.action_functions.append((self.replace_flat,'Replace flat'))
         print 'Computing mirror maximum rate...'
-        self.max_rate = self.get_max_rate(500)
+        self.max_rate = self.get_max_rate(5000)
         print 'Maximum rate is %0.2f Hz.'%self.max_rate
 
     def flatten(self):
