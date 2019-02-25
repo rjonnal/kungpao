@@ -4,7 +4,7 @@ import centroid
 import config as kcfg
 import cameras
 import sys
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal, Qt, QPoint, QLine
+from PyQt5.QtCore import QTimer, pyqtSignal, Qt, QPoint, QLine, QObject
 from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget,
                              QHBoxLayout, QVBoxLayout, QGraphicsScene,
                              QLabel,QGridLayout, QCheckBox, QFrame, QGroupBox,
@@ -16,7 +16,65 @@ import os
 import psutil
 from matplotlib import pyplot as plt
 import datetime
-from tools import error_message, now_string, prepend, colortable, get_ram, get_process
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+process = psutil.Process(os.getpid())
+
+def error_message(message):
+    error_dialog = QErrorMessage()
+    error_dialog.setWindowModality(Qt.WindowModal)
+    error_dialog.showMessage(message)
+    error_dialog.exec_()
+
+
+def now_string():
+    return datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+
+def prepend(full_path_fn,prefix):
+    p,f = os.path.split(full_path_fn)
+    return os.path.join(p,'%s_%s'%(prefix,f))
+
+def colortable(colormap_name):
+    try:
+        cmapobj = plt.get_cmap(colormap_name)
+    except AttributeError as ae:
+        print '\'%s\' is not a valid colormap name'%colormap_name
+        print 'using \'bone\' instead'
+        cmapobj = plt.get_cmap('bone')
+    ncolors = cmapobj.N
+
+
+    cmap = np.uint8(cmapobj(range(ncolors))[:,:3]*255.0)
+    table = []
+    for row in xrange(cmap.shape[0]):
+        table.append(qRgb(cmap[row,0],cmap[row,1],cmap[row,2]))
+    return table
+
+
+class PlotCanvas(FigureCanvas):
+ 
+    def __init__(self, parent=None, width=5, height=4, dpi=100):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+ 
+        FigureCanvas.__init__(self, fig)
+        self.setParent(parent)
+ 
+        FigureCanvas.setSizePolicy(self,
+                QSizePolicy.Expanding,
+                QSizePolicy.Expanding)
+        FigureCanvas.updateGeometry(self)
+        self.plot()
+ 
+ 
+    def plot(self):
+        data = np.random.randn(25)
+        ax = self.figure.add_subplot(111)
+        ax.plot(data, 'r-')
+        ax.set_title('PyQt Matplotlib Example')
+        self.draw()
+
 
 class SearchBoxes:
 
@@ -108,12 +166,12 @@ class SearchBoxes:
         return sb
 
 
-class Component(QThread):
+class Component(QObject):
 
     ping = pyqtSignal()
     
     def __init__(self,update_rate=30.0,fps_interval=1.0,initial_paused=False,parent=None):
-        super(QThread,self).__init__(parent)
+        super(QObject,self).__init__(parent)
         self.update_rate = update_rate
         self.count = 0.0
         self.t0 = time.time()
@@ -140,6 +198,7 @@ class Component(QThread):
         self.set_paused(False)
         
     def update(self):
+        print self.count
         if self.paused:
             return
         self.step()
@@ -152,11 +211,10 @@ class Component(QThread):
     def step(self):
         pass
 
-    def run(self):
+    def start(self):
         timer = QTimer()
         timer.timeout.connect(self.update)
         timer.start(1.0/self.update_rate*1000.0)
-        self.exec_()
 
     def get_max_rate(self,n_iterations=100):
         self.pause()
@@ -395,6 +453,7 @@ class Sensor(Component):
         
         
     def get_fps(self):
+        #print(process.memory_info().rss)//1024//1024
         return self.fps
 
     # def run(self):
@@ -1168,7 +1227,6 @@ if __name__ == '__main__':
 
     # construct the QApplication
     app = QApplication(sys.argv)
-    QThread.currentThread().setPriority(QThread.LowPriority)
     # create a camera
     camera = cameras.SimulatedCamera()
 

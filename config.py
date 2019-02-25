@@ -20,15 +20,15 @@ bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-kungpao_root = 'c:/code/kungpao'
-#kungpao_root = '/home/rjonnal/code/kungpao'
+#kungpao_root = 'c:/code/kungpao'
+kungpao_root = '/home/rjonnal/code/kungpao'
 
 simulated_camera_image_directory = kungpao_root + '/data/spots/'
-#reference_coordinates_filename = kungpao_root + '/etc/ref/coords.txt'
+reference_coordinates_filename = kungpao_root + '/etc/ref/coords.txt'
 #reference_coordinates_filename = kungpao_root + '/etc/ref/20190210211425_coords.txt'
 
 reference_directory = kungpao_root + '/etc/ref/'
-reference_mask_filename = kungpao_root + '/etc/ref/reference_mask.txt'
+reference_mask_filename = kungpao_root + '/etc/ref/reference_mask_small.txt'
 reference_n_measurements = 10
 
 poke_directory = kungpao_root + '/etc/ctrl'
@@ -56,10 +56,10 @@ slope_line_color = (200,0,0,64)
 single_spot_color = (255,63,63,255)
 single_spot_thickness = 2.0
 
-sensor_update_rate = 50.0
+sensor_update_rate = 2.0
 sensor_filter_lenslets = False
 
-mirror_update_rate = 100.0
+mirror_update_rate = 10.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'

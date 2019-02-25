@@ -24,6 +24,7 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
 
     cdef np.int_t n_spots = len(sb_x1_vec)
     cdef np.int_t k
+    cdef np.int_t num_threads_t = int(num_threads)
     cdef np.float_t intensity
     cdef np.float_t background
     cdef np.float_t xprod
@@ -36,12 +37,15 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
     cdef np.float_t edge_counter
     cdef np.int_t estimate_background_t
     cdef np.float_t background_correction_t
+    
     if estimate_background:
         estimate_background_t = 1
     else:
         estimate_background_t = 0
     background_correction_t = float(background_correction)
-    #for k in prange(n_spots,nogil=True,num_threads=num_threads):
+    num_threads_t = int(num_threads)
+    
+    #for k in prange(n_spots,nogil=True,num_threads=num_threads_t):
     for k in range(n_spots):
         if estimate_background_t:
             edge_counter = 0.0
