@@ -5,12 +5,13 @@ import os,sys
 
 class SimulatedCamera:
 
-    def __init__(self,opacity=False):
+    def __init__(self,mutex):
+        self.mutex = mutex
         self.image_list = sorted(glob.glob(os.path.join(kcfg.simulated_camera_image_directory,'*.npy')))
         self.n_images = len(self.image_list)
         self.index = 0
         #self.images = [np.load(fn) for fn in self.image_list]
-        self.opacity = opacity
+        self.opacity = False
         self.sy,self.sx = np.load(self.image_list[0]).shape
         self.oy = int(round(np.random.rand()*self.sy//2+self.sy//4))
         self.ox = int(round(np.random.rand()*self.sx//2+self.sx//4))
@@ -23,6 +24,7 @@ class SimulatedCamera:
         return self.opacity
             
     def get_image(self):
+        self.mutex.lock()
         im = np.load(self.image_list[self.index])
         #im = self.images[self.index]
 
@@ -32,6 +34,7 @@ class SimulatedCamera:
             self.ox = self.ox+np.random.randn()*.5
 
         self.index = (self.index + 1)%self.n_images
+        self.mutex.unlock()
         return im
         
     

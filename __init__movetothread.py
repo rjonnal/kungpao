@@ -130,39 +130,25 @@ class SearchBoxes:
         
 class Clock(QObject):
 
-    def __init__(self,update_rate=1.0,fps_interval=1.0,initial_paused=False,parent=None):
+    def __init__(self,update_rate=1.0,fps_interval=1.0,parent=None):
         super(Clock,self).__init__(parent=parent)
         self.update_rate = update_rate
         self.count = 0.0
         self.t0 = time.time()
-        self.paused = initial_paused
+        self.t = 0.0
         self.fps_interval = fps_interval
         self.fps_window = int(round(self.update_rate*self.fps_interval))
         self.fps = 0.0
         
-    def set_paused(self,val):
-        self.paused = val
-
     def reset(self):
         self.count = 0
         self.t0 = time.time()
             
-    def get_paused(self):
-        return self.paused
-    
-    def pause(self):
-        self.set_paused(True)
-
-    def unpause(self):
-        self.reset()
-        self.set_paused(False)
-        
     def tick(self):
         self.count = self.count + 1
+        self.t = time.time() - self.t0
         if self.count==self.fps_window:
-            self.fps = float(self.count)/(time.time()-self.t0)
-            self.count = 0
-            self.t0 = time.time()
+            self.fps = float(self.count)/self.t
 
 
 
@@ -187,6 +173,7 @@ class Sensor(QObject):
         self.name = 'frank'
         
     def update(self):
+        print self.clock.t
         self.state = SensorState(np.random.randn(10),'foo',lambda x: x+np.random.rand(),self.clock.fps)
         self.sensor_updated.emit(self.state)
         self.clock.tick()

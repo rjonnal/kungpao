@@ -4,7 +4,7 @@ import centroid
 import config as kcfg
 import cameras
 import sys
-from PyQt5.QtCore import QThread, QTimer, pyqtSignal, Qt, QPoint, QLine
+from PyQt5.QtCore import QThread, QTimer, pyqtSignal, Qt, QPoint, QLine, QMutex
 from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget,
                              QHBoxLayout, QVBoxLayout, QGraphicsScene,
                              QLabel,QGridLayout, QCheckBox, QFrame, QGroupBox,
@@ -178,9 +178,10 @@ class Sensor(Component):
     # to be called on exposure, as described in this example:
     # https://pgi-jcns.fz-juelich.de/portal/pages/using-c-from-python.html
     
-    def __init__(self,camera,**kwargs):#update_rate=30.0,fps_window=100,initial_paused=False,parent=None):
+    def __init__(self,camera,mutex,**kwargs):#update_rate=30.0,fps_window=100,initial_paused=False,parent=None):
         super(Sensor,self).__init__(**kwargs)#update_rate,fps_window,initial_paused,parent)
-        
+
+        self.mutex = mutex
         # load some configuration data
         try:
             ref_xy = np.loadtxt(kcfg.reference_coordinates_filename)
@@ -352,7 +353,7 @@ class Sensor(Component):
         
     def step(self):
         self.spots = self.cam.get_image()
-
+        self.mutex.lock()
         sb = self.search_boxes
         xr = self.x_ref.copy()
         yr = self.y_ref.copy()
@@ -391,6 +392,7 @@ class Sensor(Component):
         self.x_slopes-=self.tilt
         self.y_slopes-=self.tip
         self.set_active_lenslets()
+        self.mutex.unlock()
         self.ping.emit()
         
         
@@ -425,7 +427,7 @@ class Mirror(Component):
         self.action_functions.append((self.flatten,'&Flatten miror'))
         self.action_functions.append((self.replace_flat,'Replace flat'))
         print 'Computing mirror maximum rate...'
-        self.max_rate = self.get_max_rate(5000)
+        self.max_rate = self.get_max_rate(100)
         print 'Maximum rate is %0.2f Hz.'%self.max_rate
 
     def flatten(self):
@@ -465,6 +467,7 @@ class Loop:
         self.paused = False
         self.closed = False
         self.sensor = sensor
+        self.mutex = sensor.mutex
         self.mirror = mirror
         self.active_lenslets = np.ones(sensor.active_lenslets.shape,dtype=np.int)
         self.sensor.ping.connect(self.update)
@@ -591,8 +594,10 @@ class Loop:
             if not all(self.active_lenslets==sensor.active_lenslets):
                 self.active_lenslets[:] = sensor.active_lenslets[:]
                 self.poke.invert(mask=self.active_lenslets)
+            self.mutex.lock()
             xs = self.sensor.x_slopes[np.where(self.active_lenslets)[0]]
             ys = self.sensor.y_slopes[np.where(self.active_lenslets)[0]]
+            self.mutex.unlock()
             slope_vec = np.hstack((xs,ys))
 
             command = self.gain * np.dot(self.poke.ctrl,slope_vec)
@@ -797,7 +802,7 @@ class Gui(QWidget):
         self.mirror_pixmap = QPixmap()
 
         self.loop = loop
-        
+        self.mutex = self.loop.sensor.mutex
         self.bit_depth = kcfg.bit_depth
         self.scale_factor = kcfg.interface_scale_factor
         self.downsample = int(round(1.0/self.scale_factor))
@@ -1030,12 +1035,15 @@ class Gui(QWidget):
         # receives slopes and image from sensor signal
         # first, convert the numpy image data into a QImage
         k = self.single_spot_index
+
+        self.mutex.lock()
         data = self.loop.sensor.spots
         self.bmp = self.bmpscale(data,self.downsample,self.cmin,self.cmax)
         single = data[self.loop.sensor.search_boxes.y1[k]:self.loop.sensor.search_boxes.y2[k]+1,
                       self.loop.sensor.search_boxes.x1[k]:self.loop.sensor.search_boxes.x2[k]+1]
         self.single_bmp = self.bmpscale(single,1,self.cmin,self.cmax)
-
+        self.mutex.unlock()
+        
         sy,sx = self.bmp.shape
         n_bytes = self.bmp.nbytes
         bytes_per_line = int(n_bytes/sy)
@@ -1170,9 +1178,11 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     QThread.currentThread().setPriority(QThread.LowPriority)
     # create a camera
-    camera = cameras.SimulatedCamera()
 
-    sensor = Sensor(camera,update_rate=kcfg.sensor_update_rate)
+    mutex = QMutex()
+    camera = cameras.SimulatedCamera(mutex)
+
+    sensor = Sensor(camera,mutex,update_rate=kcfg.sensor_update_rate)
     mirror = Mirror(update_rate=kcfg.mirror_update_rate)
     loop = Loop(sensor,mirror)
     gui = Gui(loop)

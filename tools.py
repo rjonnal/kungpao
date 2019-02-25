@@ -4,6 +4,8 @@ from PyQt5.QtWidgets import QErrorMessage
 from matplotlib import pyplot as plt
 import datetime
 import psutil
+import numpy as np
+from PyQt5.QtGui import qRgb
 
 def get_process():
     return psutil.Process(os.getpid())

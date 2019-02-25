@@ -56,17 +56,17 @@ slope_line_color = (200,0,0,64)
 single_spot_color = (255,63,63,255)
 single_spot_thickness = 2.0
 
-sensor_update_rate = 2.0
+sensor_update_rate = 100.0
 sensor_filter_lenslets = False
 
-mirror_update_rate = 10.0
+mirror_update_rate = 50.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'
 mirror_mask_filename = kungpao_root + '/etc/dm/mirror_mask.txt'
 mirror_current_max = 1.0
 mirror_current_min = -1.0
-mirror_settling_time_s = 0.001*0
+mirror_settling_time_s = 0.001
 
 poke_current_max = 0.5
 poke_current_min = -0.5
