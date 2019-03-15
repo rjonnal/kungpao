@@ -14,7 +14,7 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                         np.ndarray[np.int16_t,ndim=1] sb_y2_vec,
                         np.ndarray[np.float_t,ndim=1] x_out,
                         np.ndarray[np.float_t,ndim=1] y_out,
-                        np.ndarray[np.float_t,ndim=1] total_intensity,
+                        np.ndarray[np.float_t,ndim=1] mean_intensity,
                         np.ndarray[np.float_t,ndim=1] maximum_intensity,
                         np.ndarray[np.float_t,ndim=1] minimum_intensity,
                         np.ndarray[np.float_t,ndim=1] background_intensity,
@@ -37,6 +37,7 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
     cdef np.float_t edge_counter
     cdef np.int_t estimate_background_t
     cdef np.float_t background_correction_t
+    cdef np.float_t counter
     
     if estimate_background:
         estimate_background_t = 1
@@ -77,7 +78,7 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                 pixel = float(spots_image[y,x])-(background+background_correction_t)
                 if pixel<0.0:
                     pixel = 0.0
-                spots_image[y,x] = <np.int_t>pixel
+                #spots_image[y,x] = <np.int_t>pixel
                 xprod = xprod + pixel*x
                 yprod = yprod + pixel*y
                 intensity = intensity + pixel
@@ -85,12 +86,14 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                     imin=pixel
                 if pixel>imax:
                     imax=pixel
-        if intensity==0.0:
-            intensity = 1.0
-        total_intensity[k] = intensity
+                counter = counter + 1.0
+                
+        mean_intensity[k] = intensity/counter
         background_intensity[k] = background
         maximum_intensity[k] = imax
         minimum_intensity[k] = imin
+        if intensity==0.0:
+            intensity = 1.0
         x_out[k] = xprod/intensity
         y_out[k] = yprod/intensity
     return x_out,y_out

@@ -31,7 +31,10 @@ reference_directory = kungpao_root + '/etc/ref/'
 reference_mask_filename = kungpao_root + '/etc/ref/reference_mask_small.txt'
 reference_n_measurements = 10
 
-poke_directory = kungpao_root + '/etc/ctrl'
+poke_directory = kungpao_root + '/etc/ctrl/'
+poke_filename = poke_directory + '20160811102739_poke.txt'
+
+n_zernike_terms = 66
 
 lenslet_pitch_m = 500e-6
 lenslet_focal_length_m = 30.0e-3
@@ -58,20 +61,21 @@ single_spot_thickness = 2.0
 
 sensor_update_rate = 100.0
 sensor_filter_lenslets = False
+sensor_reconstruct_wavefront = True
+sensor_remove_tip_tilt = True
 
-mirror_update_rate = 50.0
+mirror_update_rate = 500.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'
 mirror_mask_filename = kungpao_root + '/etc/dm/mirror_mask.txt'
-mirror_current_max = 1.0
-mirror_current_min = -1.0
+mirror_command_max = 1.0
+mirror_command_min = -1.0
 mirror_settling_time_s = 0.001
 
-poke_current_max = 0.5
-poke_current_min = -0.5
-poke_n_current_steps = 5
-poke_filename = kungpao_root + '/etc/ctrl/poke.txt'
+poke_command_max = 0.5
+poke_command_min = -0.5
+poke_n_command_steps = 5
 ctrl_dictionary_max_size = 10
 
 loop_n_control_modes = 50
@@ -108,6 +112,6 @@ if rigorous_iteration:
     iterative_centroiding_step = 1
     centroiding_iterations = int(round((search_box_half_width-diffraction_limited_half_width_px)//iterative_centroiding_step))
 else:
-    iterative_centroiding_step = 2
-    centroiding_iterations = 3
+    iterative_centroiding_step = 3
+    centroiding_iterations = 2
 
