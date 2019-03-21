@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QApplication, QPushButton, QWidget,
                              QHBoxLayout, QVBoxLayout, QGraphicsScene,
                              QLabel,QGridLayout, QCheckBox, QFrame, QGroupBox,
                              QSpinBox,QDoubleSpinBox,QSizePolicy,QFileDialog,
-                             QErrorMessage)
+                             QErrorMessage, QSlider)
 from PyQt5.QtGui import QColor, QImage, QPainter, QPixmap, qRgb, QPen, QBitmap, QPalette, QIcon
 import time
 import os
@@ -206,8 +206,28 @@ class Sensor(QObject):
         self.frame_timer = FrameTimer('Sensor',verbose=True)
         self.reconstructor = Reconstructor(self.cfg.search_boxes.x,
                                            self.cfg.search_boxes.y,self.cfg.mask)
+
+        self.paused = False
+        
     @pyqtSlot()
     def update(self):
+        if not self.paused:
+            self.sense()
+        self.finished.emit(self.state)
+        self.frame_timer.tick()
+
+    @pyqtSlot()
+    def pause(self):
+        print 'sensor paused'
+        self.paused = True
+
+    @pyqtSlot()
+    def unpause(self):
+        print 'sensor unpaused'
+        self.paused = False
+        #self.sense()
+        
+    def sense(self):
         image = cam.get_image()
         sensor_configuration_mutex.lock()
         local_cfg = self.cfg.copy()
@@ -254,8 +274,6 @@ class Sensor(QObject):
         sensor_state_mutex.lock()
         self.state = local_state
         sensor_state_mutex.unlock()
-        self.finished.emit(self.state)
-        self.frame_timer.tick()
 
     def get_configuration(self):
         sensor_configuration_mutex.lock()
@@ -268,7 +286,104 @@ class Sensor(QObject):
         self.cfg = new_cfg
         sensor_configuration_mutex.unlock()
         
+    def get_state(self):
+        sensor_state_mutex.lock()
+        ms = self.state.copy()
+        sensor_state_mutex.unlock()
+        return ms
+        
+    def set_state(self,new_state):
+        sensor_state_mutex.lock()
+        self.state = new_state
+        sensor_state_mutex.unlock()
+    
+    def auto_center(self,window_spots=False,spot_half_width=5):
+        self.pause()
+        # make a simulated spots image
+        sim = np.zeros((kcfg.image_height_px,kcfg.image_width_px))
+        for x,y in zip(self.x_ref,self.y_ref):
+            ry,rx = int(round(y)),int(round(x))
+            sim[ry-spot_half_width:ry+spot_half_width+1,
+                rx-spot_half_width:rx+spot_half_width+1] = 1.0
 
+        spots = self.cam.get_image()
+
+        if window_spots:
+            sy,sx = sim.shape
+            XX,YY = np.meshgrid(np.arange(sx),np.arange(sy))
+            xcom = np.sum(spots*XX)/np.sum(spots)
+            ycom = np.sum(spots*YY)/np.sum(spots)
+            XX = XX-xcom
+            YY = YY-ycom
+            d = np.sqrt(XX**2+YY**2)
+            sigma = kcfg.image_width_px//2
+            g = np.exp((-d**2)/(2*sigma**2))
+            spots = spots*g
+        
+        # cross-correlate it with a spots image to find the most likely offset
+        nxc = np.abs(np.fft.ifft2(np.fft.fft2(spots)*np.conj(np.fft.fft2(sim))))
+
+        sy,sx = nxc.shape
+        ymax,xmax = np.unravel_index(np.argmax(nxc),nxc.shape)
+        if ymax>sy//2:
+            ymax = ymax-sy
+        if xmax>sx//2:
+            xmax = xmax-sx
+        
+        new_x_ref = self.x_ref+xmax
+        new_y_ref = self.y_ref+ymax
+        config = self.get_configuration()
+        search_boxes = SearchBoxes(new_x_ref,new_y_ref,config.search_boxes.half_width)
+        config.search_boxes = search_boxes
+        self.set_configuration(config)
+        self.unpause()
+
+    def record_reference(self,verbose=True):
+        if verbose:
+            print 'recording reference'
+        self.pause()
+        xcent = []
+        ycent = []
+        for k in range(kcfg.reference_n_measurements):
+            if verbose:
+                print 'measurement %d of %d'%(k+1,kcfg.reference_n_measurements)
+            self.sense()
+            state = self.get_state()
+            xcent.append(state.x_centroids)
+            ycent.append(state.y_centroids)
+            
+        x_ref = np.array(xcent).mean(0)
+        y_ref = np.array(ycent).mean(0)
+        config = self.get_configuration()
+        search_boxes = SearchBoxes(x_ref,y_ref,config.search_boxes.half_width)
+        config.search_boxes = search_boxes
+        self.set_configuration(config)
+        outfn = os.path.join(kcfg.reference_directory,prepend('coords.txt',now_string()))
+        refxy = np.array((x_ref,y_ref)).T
+        np.savetxt(outfn,refxy,fmt='%0.2f')
+        self.unpause()
+        
+    def make_reference_coordinates(self,x_offset=0.0,y_offset=0.0):
+        self.pause()
+        sensor_x = kcfg.image_width_px
+        sensor_y = kcfg.image_height_px
+        config = self.get_configuration()
+        mask = config.mask
+        lenslet_pitch = kcfg.lenslet_pitch_m
+        pixel_size = kcfg.pixel_size_m
+        stride = lenslet_pitch/pixel_size
+        my,mx = mask.shape
+        xvec = np.arange(stride/2.0,mx*stride,stride)+x_offset
+        yvec = np.arange(stride/2.0,my*stride,stride)+y_offset
+        ref_xy = []
+        for y in range(my):
+            for x in range(mx):
+                if mask[y,x]:
+                    ref_xy.append((xvec[x],yvec[y]))
+        ref_xy = np.array(ref_xy)
+        self.unpause()
+        return ref_xy
+    
 class MirrorConfiguration(QObject):
     def __init__(self):
         super(MirrorConfiguration,self).__init__()
@@ -304,18 +419,26 @@ class Mirror(QObject):
         self.timer = QTimer()
         self.timer.timeout.connect(self.update)
         self.timer.start(1.0/self.cfg.update_rate*1000.0)
-        self.frame_timer = FrameTimer('Mirror',verbose=False)
-
+        self.frame_timer = FrameTimer('Mirror',verbose=True)
+        self.paused = False
+        
     @pyqtSlot()
     def update(self):
-        self.check_command()
-        
-        mirror_state_mutex.lock()
-        # send commands to mirror here
-        mirror_state_mutex.unlock()
+        if not self.paused:
+            self.send()
         self.frame_timer.tick()
 
-    def check_command(self):
+    @pyqtSlot()
+    def pause(self):
+        print 'mirror paused'
+        self.paused = True
+
+    @pyqtSlot()
+    def unpause(self):
+        print 'mirror unpaused'
+        self.paused = False
+
+    def send(self):
         mirror_state_mutex.lock()
         mirror_configuration_mutex.lock()
         cmax = self.cfg.command_max
@@ -323,13 +446,31 @@ class Mirror(QObject):
         command = self.state.command
         command = np.clip(command,cmin,cmax)
         self.state.command = command
+        # SEND TO MIRROR HERE
         mirror_state_mutex.unlock()
         mirror_configuration_mutex.unlock()
+
+    def flatten(self):
+        #self.pause()
+        mirror_configuration_mutex.lock()
+        flat = self.cfg.flat.copy()
+        mirror_configuration_mutex.unlock()
+        mirror_state_mutex.lock()
+        self.state.command = flat
+        mirror_state_mutex.unlock()
+        self.send()
+        #self.unpause()
+
+    def set_actuator(self,index,value):
+        mirror_state_mutex.lock()
+        self.state.command[index] = value
+        mirror_state_mutex.unlock()
         
     def get_state(self):
         mirror_state_mutex.lock()
-        self.finished.emit(self.state.copy())
+        ms = self.state.copy()
         mirror_state_mutex.unlock()
+        return ms
         
     def set_state(self,new_state):
         mirror_state_mutex.lock()
@@ -351,6 +492,9 @@ class Mirror(QObject):
 class Loop(QObject):
 
     finished = pyqtSignal()
+    pause_signal = pyqtSignal()
+    unpause_signal = pyqtSignal()
+    final_states = pyqtSignal(QObject,QObject)
     
     def __init__(self,sensor,mirror):
         super(Loop,self).__init__()
@@ -361,17 +505,23 @@ class Loop(QObject):
         self.active_lenslets = np.zeros(self.sensor.cfg.n).astype(int)
         self.mirror = mirror
         self.sensor.moveToThread(self.sensor_thread)
-        self.mirror.moveToThread(self.mirror_thread)
+        #self.mirror.moveToThread(self.mirror_thread)
 
         self.sensor_thread.started.connect(self.sensor.update)
         self.finished.connect(self.sensor.update)
         self.sensor.finished.connect(self.update)
-
+        
+        self.pause_signal.connect(self.sensor.pause)
+        self.pause_signal.connect(self.mirror.pause)
+        self.unpause_signal.connect(self.sensor.unpause)
+        self.unpause_signal.connect(self.mirror.unpause)
+        
         self.poke = None
         self.closed = True
         self.load_poke(kcfg.poke_filename)
         self.gain = kcfg.loop_gain
         self.loss = kcfg.loop_loss
+        self.paused = False
 
     def has_poke(self):
         return self.poke is not None
@@ -380,35 +530,49 @@ class Loop(QObject):
         self.sensor_thread.start()
         self.mirror_thread.start()
 
+
+    def pause(self):
+        self.pause_signal.emit()
+        self.paused = True
+
+    def unpause(self):
+        self.unpause_signal.emit()
+        self.paused = False
+        self.finished.emit()
+        print 'loop unpaused'
+        
     @pyqtSlot(QObject)
     def update(self,sensor_state):
-        sensor_state_mutex.lock()
-        local_sensor_state = sensor_state.copy()
-        sensor_state_mutex.unlock()
+        if not self.paused:
+            print 'loop updating'
+            sensor_state_mutex.lock()
+            local_sensor_state = sensor_state.copy()
+            sensor_state_mutex.unlock()
 
-        mirror_state_mutex.lock()
-        local_mirror_state = self.mirror.state.copy()
-        mirror_state_mutex.unlock()
+            mirror_state_mutex.lock()
+            local_mirror_state = self.mirror.state.copy()
+            mirror_state_mutex.unlock()
 
-        current_active_lenslets = self.decide_lenslets(local_sensor_state)
-        # compute the mirror command here
-        if self.closed and self.has_poke():
-            if not all(self.active_lenslets==current_active_lenslets):
-                self.active_lenslets[:] = current_active_lenslets[:]
-                self.poke.invert(mask=self.active_lenslets)
-            
-            xs = local_sensor_state.x_slopes[np.where(self.active_lenslets)[0]]
-            ys = local_sensor_state.y_slopes[np.where(self.active_lenslets)[0]]
-            slope_vec = np.hstack((xs,ys))
-            command = self.gain * np.dot(self.poke.ctrl,slope_vec)
-            command = local_mirror_state.command*(1-self.loss) - command
-            local_mirror_state.command = command
-            self.mirror.set_state(local_mirror_state)
-            self.finished.emit()
+            current_active_lenslets = self.decide_lenslets(local_sensor_state)
+            # compute the mirror command here
+            if self.closed and self.has_poke():
+                if not all(self.active_lenslets==current_active_lenslets):
+                    self.active_lenslets[:] = current_active_lenslets[:]
+                    self.poke.invert(mask=self.active_lenslets)
 
-    def decide_lenslets(self,sensor_cfg):
-        active_lenslets = np.zeros(sensor_cfg.n).astype(int)
-        active_lenslets[np.where(sensor_cfg.box_maxes>kcfg.spots_threshold)] = 1
+                xs = local_sensor_state.x_slopes[np.where(self.active_lenslets)[0]]
+                ys = local_sensor_state.y_slopes[np.where(self.active_lenslets)[0]]
+                slope_vec = np.hstack((xs,ys))
+                command = self.gain * np.dot(self.poke.ctrl,slope_vec)
+                command = local_mirror_state.command*(1-self.loss) - command
+                local_mirror_state.command = command
+                self.mirror.set_state(local_mirror_state)
+                self.finished.emit()
+                self.final_states.emit(local_sensor_state,local_mirror_state)
+                
+    def decide_lenslets(self,sensor_state):
+        active_lenslets = np.zeros(sensor_state.x_slopes.shape).astype(int)
+        active_lenslets[np.where(sensor_state.box_maxes>kcfg.spots_threshold)] = 1
         return active_lenslets
 
     def load_poke(self,poke_filename=None):
@@ -446,6 +610,394 @@ class Loop(QObject):
 
         self.poke = Poke(poke)
 
+    def run_poke(self):
+        cmin = kcfg.poke_command_min
+        cmax = kcfg.poke_command_max
+        n_commands = kcfg.poke_n_command_steps
+        commands = np.linspace(cmin,cmax,n_commands)
+        self.pause()
+        time.sleep(1)
+        local_sensor_cfg = self.sensor.get_configuration()
+        local_mirror_cfg = self.mirror.get_configuration()
+        n_lenslets = local_sensor_cfg.n
+        n_actuators = local_mirror_cfg.n
+        x_mat = np.zeros((n_lenslets,n_actuators,n_commands))
+        y_mat = np.zeros((n_lenslets,n_actuators,n_commands))
+        for k_actuator in range(n_actuators):
+            self.mirror.flatten()
+            for k_command in range(n_commands):
+                cur = commands[k_command]
+
+                print k_actuator,cur
+                self.mirror.set_actuator(k_actuator,cur)
+                QApplication.processEvents()
+                time.sleep(.01)
+                self.sensor.sense()
+                local_sensor_state = self.sensor.get_state()
+                local_mirror_state = self.mirror.get_state()
+                x_mat[:,k_actuator,k_command] = local_sensor_state.x_slopes
+                y_mat[:,k_actuator,k_command] = local_sensor_state.y_slopes
+                self.final_states.emit(local_sensor_state,local_mirror_state)
+        # print 'done'
+        self.mirror.flatten()
+        
+        d_commands = np.mean(np.diff(commands))
+        d_x_mat = np.diff(x_mat,axis=2)
+        d_y_mat = np.diff(y_mat,axis=2)
+
+        x_response = np.mean(d_x_mat/d_commands,axis=2)
+        y_response = np.mean(d_y_mat/d_commands,axis=2)
+        poke = np.vstack((x_response,y_response))
+        poke_fn = os.path.join(kcfg.poke_directory,'%s_poke.txt'%now_string())
+        np.savetxt(poke_fn,poke)
+        self.poke = Poke(poke)
+        time.sleep(1)
+        self.unpause()
+
+
+class ImageDisplay0(QLabel):
+    def __init__(self,name,downsample=1,clim=None,colormap=None,mouse_event_handler=None):
+        super(ImageDisplay,self).__init__()
+        self.name = name
+        if clim is None:
+            try:
+                clim = np.loadtxt('.gui_settings/clim_%s.txt'%name)
+            except Exception as e:
+                pass
+        self.clim = clim
+        self.pixmap = QPixmap()
+        self.downsample = downsample
+        self.colormap = colormap
+        self.zoomed = False
+        if self.colormap is not None:
+            self.colortable = colortable(self.colormap)
+        if mouse_event_handler is not None:
+            self.mousePressEvent = mouse_event_handler
+        else:
+            self.mousePressEvent = self.zoom
+            
+        data = np.random.rand(100,100)
+        self.show(data)
+        self.zoom_x1 = 0
+        self.zoom_x2 = self.sx-1
+        self.zoom_y1 = 0
+        self.zoom_y2 = self.sy-1
+        
+    def show(self,data,boxes=None,lines=None):
+        if self.clim is None:
+            clim = (data.min(),data.max())
+        else:
+            clim = self.clim
+
+        cmin,cmax = clim
+        downsample = self.downsample
+        data = data[::downsample,::downsample]
+        self.sy,self.sx = data.shape
+        
+        if self.zoomed:
+            data = data[self.zoom_y1:self.zoom_y2,self.zoom_x1:self.zoom_x2]
+        
+        bmp = np.round(np.clip((data.astype(np.float)-cmin)/(cmax-cmin),0,1)*255).astype(np.uint8)
+        #np.save('bmp.npy',bmp)
+        sy,sx = bmp.shape
+        n_bytes = bmp.nbytes
+        bytes_per_line = int(n_bytes/sy)
+        #QApplication.processEvents()
+        image = QImage(bmp,sy,sx,bytes_per_line,QImage.Format_Indexed8)
+        #image = QImage(bmp,sy,sx,bytes_per_line,QImage.Format_Grayscale8)
+        if self.colormap is not None:
+            image.setColorTable(self.colortable)
+        #QApplication.processEvents()
+        self.pixmap.convertFromImage(image)
+        #QApplication.processEvents()
+
+        #self.overlay.draw(self.pixmap)
+
+        #painter = QPainter(self.pixmap)
+        if boxes is not None:
+            x1vec,x2vec,y1vec,y2vec = boxes
+            pen = QPen()
+            pen.setColor(QColor(*kcfg.active_search_box_color))
+            pen.setWidth(kcfg.search_box_thickness)
+            painter = QPainter()
+            painter.begin(self.pixmap)
+            painter.setPen(pen)
+            for index,(x1,y1,x2,y2) in enumerate(zip(x1vec,y1vec,x2vec,y2vec)):
+                width = float(x2 - x1 + 1)/float(self.downsample)
+                painter.drawRect(x1/float(self.downsample)-self.zoom_x1,y1/float(self.downsample)-self.zoom_y1,width,width)
+            painter.end()
+            
+        if lines is not None:
+            x1vec,x2vec,y1vec,y2vec = lines
+            pen = QPen()
+            pen.setColor(QColor(*kcfg.slope_line_color))
+            pen.setWidth(kcfg.slope_line_thickness)
+            painter = QPainter()
+            painter.begin(self.pixmap)
+            painter.setPen(pen)
+            for index,(x1,y1,x2,y2) in enumerate(zip(x1vec,y1vec,x2vec,y2vec)):
+                painter.drawLine(QLine(x1/float(self.downsample)- self.zoom_x1,y1/float(self.downsample)-self.zoom_y1,x2/float(self.downsample)- self.zoom_x1,y2/float(self.downsample)- self.zoom_y1))
+            painter.end()
+            
+        self.setPixmap(self.pixmap.scaled(self.sy,self.sx))
+        
+        
+    def set_clim(self,clim):
+        self.clim = clim
+
+    def zoom(self,event):
+        x,y = event.x(),event.y()
+        if self.zoomed:
+            self.zoomed = False
+            self.zoom_x1 = 0
+            self.zoom_x2 = self.sx-1
+            self.zoom_y1 = 0
+            self.zoom_y2 = self.sy-1
+        else:
+            self.zoomed = True
+            self.zoom_x1 = x-kcfg.zoom_width//2
+            self.zoom_x2 = x+kcfg.zoom_width//2
+            self.zoom_y1 = y-kcfg.zoom_height//2
+            self.zoom_y2 = y+kcfg.zoom_height//2
+            if self.zoom_x1<0:
+                dx = -self.zoom_x1
+                self.zoom_x1+=dx
+                self.zoom_x2+=dx
+            if self.zoom_x2>self.sx-1:
+                dx = self.zoom_x2-(self.sx-1)
+                self.zoom_x1-=dx
+                self.zoom_x2-=dx
+            if self.zoom_y1<0:
+                dy = -self.zoom_y1
+                self.zoom_y1+=dy
+                self.zoom_y2+=dy
+            if self.zoom_y2>self.sy-1:
+                dy = self.zoom_y2-(self.sy-1)
+                self.zoom_y1-=dy
+                self.zoom_y2-=dy
+        
+class ImageDisplay(QWidget):
+    def __init__(self,name,downsample=1,clim=None,colormap=None,mouse_event_handler=None,image_min=None,image_max=None,width=512,height=512):
+        super(ImageDisplay,self).__init__()
+        self.name = name
+        self.autoscale = False
+        self.sx = width
+        self.sy = height
+        if clim is None:
+            try:
+                clim = np.loadtxt('.gui_settings/clim_%s.txt'%name)
+            except Exception as e:
+                self.autoscale = True
+        
+        self.clim = clim
+        self.pixmap = QPixmap()
+        self.label = QLabel()
+        layout = QHBoxLayout()
+        layout.addWidget(self.label)
+
+        if image_min is not None and image_max is not None and not self.autoscale:
+            n_steps = 1000.
+            step_size = (image_max-image_min)/n_steps
+        
+            self.cmin_slider = QSlider(Qt.Vertical)
+            self.cmax_slider = QSlider(Qt.Vertical)
+
+            self.cmin_slider.setMinimum(image_min)
+            self.cmax_slider.setMinimum(image_min)
+
+            self.cmin_slider.setSingleStep(step_size)
+            self.cmax_slider.setSingleStep(step_size)
+
+            self.cmin_slider.setPageStep(step_size*10)
+            self.cmax_slider.setPageStep(step_size*10)
+
+            self.cmin_slider.setMaximum(image_max)
+            self.cmax_slider.setMaximum(image_max)
+
+            self.cmin_slider.setValue(self.clim[0])
+            self.cmax_slider.setValue(self.clim[1])
+            
+            layout.addWidget(self.cmin_slider)
+            layout.addWidget(self.cmax_slider)
+
+            self.cmin_slider.valueChanged.connect(self.set_cmin)
+            self.cmax_slider.valueChanged.connect(self.set_cmax)
+        
+        self.setLayout(layout)
+        
+        self.zoomed = False
+        self.colormap = colormap
+        if self.colormap is not None:
+            self.colortable = colortable(self.colormap)
+        if mouse_event_handler is not None:
+            self.mousePressEvent = mouse_event_handler
+        else:
+            self.mousePressEvent = self.zoom
+            
+        self.downsample = downsample
+        
+        data = np.random.rand(100,100)
+        self.show(data)
+        
+        self.zoom_x1 = 0
+        self.zoom_x2 = self.sx-1
+        self.zoom_y1 = 0
+        self.zoom_y2 = self.sy-1
+        
+
+    def set_cmax(self,val):
+        self.clim = (self.clim[0],val)
+
+    def set_cmin(self,val):
+        self.clim = (val,self.clim[1])
+        
+    def show(self,data,boxes=None,lines=None):
+        if self.autoscale:
+            clim = (data.min(),data.max())
+        else:
+            clim = self.clim
+
+        cmin,cmax = clim
+        downsample = self.downsample
+        data = data[::downsample,::downsample]
+        
+        if self.zoomed:
+            data = data[self.zoom_y1:self.zoom_y2,self.zoom_x1:self.zoom_x2]
+        
+        bmp = np.round(np.clip((data.astype(np.float)-cmin)/(cmax-cmin),0,1)*255).astype(np.uint8)
+        sy,sx = bmp.shape
+        n_bytes = bmp.nbytes
+        bytes_per_line = int(n_bytes/sy)
+        image = QImage(bmp,sy,sx,bytes_per_line,QImage.Format_Indexed8)
+        if self.colormap is not None:
+            image.setColorTable(self.colortable)
+        self.pixmap.convertFromImage(image)
+        
+        if boxes is not None:
+            x1vec,x2vec,y1vec,y2vec = boxes
+            pen = QPen()
+            pen.setColor(QColor(*kcfg.active_search_box_color))
+            pen.setWidth(kcfg.search_box_thickness)
+            painter = QPainter()
+            painter.begin(self.pixmap)
+            painter.setPen(pen)
+            for index,(x1,y1,x2,y2) in enumerate(zip(x1vec,y1vec,x2vec,y2vec)):
+                width = float(x2 - x1 + 1)/float(self.downsample)
+                painter.drawRect(x1/float(self.downsample)-self.zoom_x1,y1/float(self.downsample)-self.zoom_y1,width,width)
+            painter.end()
+            
+        if lines is not None:
+            x1vec,x2vec,y1vec,y2vec = lines
+            pen = QPen()
+            pen.setColor(QColor(*kcfg.slope_line_color))
+            pen.setWidth(kcfg.slope_line_thickness)
+            painter = QPainter()
+            painter.begin(self.pixmap)
+            painter.setPen(pen)
+            for index,(x1,y1,x2,y2) in enumerate(zip(x1vec,y1vec,x2vec,y2vec)):
+                painter.drawLine(QLine(x1/float(self.downsample)- self.zoom_x1,y1/float(self.downsample)-self.zoom_y1,x2/float(self.downsample)- self.zoom_x1,y2/float(self.downsample)- self.zoom_y1))
+            painter.end()
+
+        if sy==self.sy and sx==self.sx:
+            self.label.setPixmap(self.pixmap)
+        else:
+            self.label.setPixmap(self.pixmap.scaled(self.sy,self.sx))
+        
+    def set_clim(self,clim):
+        self.clim = clim
+
+    def zoom(self,event):
+        x,y = event.x(),event.y()
+        if self.zoomed:
+            self.zoomed = False
+            self.zoom_x1 = 0
+            self.zoom_x2 = self.sx-1
+            self.zoom_y1 = 0
+            self.zoom_y2 = self.sy-1
+        else:
+            self.zoomed = True
+            self.zoom_x1 = x-kcfg.zoom_width//2
+            self.zoom_x2 = x+kcfg.zoom_width//2
+            self.zoom_y1 = y-kcfg.zoom_height//2
+            self.zoom_y2 = y+kcfg.zoom_height//2
+            if self.zoom_x1<0:
+                dx = -self.zoom_x1
+                self.zoom_x1+=dx
+                self.zoom_x2+=dx
+            if self.zoom_x2>self.sx-1:
+                dx = self.zoom_x2-(self.sx-1)
+                self.zoom_x1-=dx
+                self.zoom_x2-=dx
+            if self.zoom_y1<0:
+                dy = -self.zoom_y1
+                self.zoom_y1+=dy
+                self.zoom_y2+=dy
+            if self.zoom_y2>self.sy-1:
+                dy = self.zoom_y2-(self.sy-1)
+                self.zoom_y1-=dy
+                self.zoom_y2-=dy
+class UI(QWidget):
+
+    def __init__(self,loop):
+        super(UI,self).__init__()
+        self.loop = loop
+        self.show_boxes = kcfg.show_search_boxes
+        self.show_lines = kcfg.show_slope_lines
+        
+        self.loop.final_states.connect(self.update_states)
+        self.init_UI()
+        
+        self.show()
+
+
+    def init_UI(self):
+        layout = QHBoxLayout()
+        imax = 2**kcfg.bit_depth-1
+        imin = 0
+        self.id_spots = ImageDisplay('spots',downsample=2,clim=(50,1000),colormap=None,image_min=imin,image_max=imax)
+        layout.addWidget(self.id_spots)
+        self.pb_poke = QPushButton('Poke')
+        self.pb_poke.clicked.connect(self.loop.run_poke)
+        self.pb_quit = QPushButton('Quit')
+        self.pb_quit.clicked.connect(sys.exit)
+        layout.addWidget(self.pb_poke)
+        layout.addWidget(self.pb_quit)
+        self.setLayout(layout)
+        
+
+    @pyqtSlot(QObject,QObject)
+    def update_states(self,sensor_state,mirror_state):
+        try:
+            self.sensor_state = sensor_state.copy()
+            #print self.sensor_state.image.max()
+            #print self.sensor_state.image.min()
+            sensor_cfg = self.loop.sensor.get_configuration()
+            #self.id_spots.draw_boxes(sensor_cfg.search_boxes)
+
+
+            sb = sensor_cfg.search_boxes
+
+            if self.show_boxes:
+                boxes = [sb.x1,sb.x2,sb.y1,sb.y2]
+            else:
+                boxes = None
+
+            if self.show_lines:
+                lines = [sb.x,sb.x+self.sensor_state.x_slopes*kcfg.slope_line_magnification,
+                         sb.y,sb.y+self.sensor_state.y_slopes*kcfg.slope_line_magnification]
+            else:
+                lines = None
+                
+            self.id_spots.show(self.sensor_state.image,boxes=boxes,lines=lines)
+            
+        except Exception as e:
+            print e
+            
+    def select_single_spot(self,click):
+        print 'foo'
+        x = click.x()*self.downsample
+        y = click.y()*self.downsample
+        self.single_spot_index = self.loop.sensor.search_boxes.get_lenslet_index(x,y)
         
         
 app = QApplication(sys.argv)
@@ -453,160 +1005,12 @@ cam = cameras.SimulatedCamera()
 sensor = Sensor(cam)
 mirror = Mirror()
 loop = Loop(sensor,mirror)
+ui = UI(loop)
 loop.start()
+
 sys.exit(app.exec_())
 
-
-class Component(QThread):
-
-    ping = pyqtSignal()
-    
-    def __init__(self,update_rate=30.0,fps_interval=1.0,initial_paused=False,parent=None):
-        super(QThread,self).__init__(parent)
-        self.update_rate = update_rate
-        self.count = 0.0
-        self.t0 = time.time()
-        self.paused = initial_paused
-        self.fps_interval = fps_interval
-        self.fps_window = int(round(self.update_rate*self.fps_interval))
-        self.fps = 0.0
-        
-    def set_paused(self,val):
-        self.paused = val
-        if not val:
-            self.count = 0
-            self.t0 = time.time()
-        else:
-            self.count = 0
-            
-    def get_paused(self):
-        return self.paused
-    
-    def pause(self):
-        self.set_paused(True)
-
-    def unpause(self):
-        self.set_paused(False)
-        
-    def update(self):
-        if self.paused:
-            return
-        self.step()
-        self.count = self.count + 1
-        if self.count==self.fps_window:
-            self.fps = float(self.count)/(time.time()-self.t0)
-            self.count = 0
-            self.t0 = time.time()
-        
-    def step(self):
-        pass
-
-    def run(self):
-        timer = QTimer()
-        timer.timeout.connect(self.update)
-        timer.start(1.0/self.update_rate*1000.0)
-        self.exec_()
-
-    def get_max_rate(self,n_iterations=100):
-        self.pause()
-        t0 = time.time()
-        for k in range(n_iterations):
-            self.step()
-        t = time.time()-t0
-        self.unpause()
-        return float(n_iterations)/t
-            
-
-class Sensor(Component):
-    # Currently this subclasses Component, which means that it runs on its
-    # own clock/thread. The disadvantage of this approach is that its
-    # update rate has to be set such that each camera frame is new (i.e.
-    # it shouldn't update faster than the exposure/transfer cycle. We
-    # should think about re-implementing this so that it initializes its
-    # own camera object and passes its update function to the camera thread
-    # to be called on exposure, as described in this example:
-    # https://pgi-jcns.fz-juelich.de/portal/pages/using-c-from-python.html
-    
-    def __init__(self,camera,mutex,**kwargs):#update_rate=30.0,fps_window=100,initial_paused=False,parent=None):
-        super(Sensor,self).__init__(**kwargs)#update_rate,fps_window,initial_paused,parent)
-
-        self.mutex = mutex
-        # load some configuration data
-        try:
-            ref_xy = np.loadtxt(kcfg.reference_coordinates_filename)
-        except Exception as e:
-            # Create search boxes using basic parameters of the lenset
-            # array and sensor
-            # The only reason to do this is to start up the software
-            # when there's never been a reference coordinate set. The next
-            # step should be to identify a reasonable guess for their position
-            # and record the centroids as reference coordinates
-            ref_xy = self.make_reference_coordinates()
-        self.x_ref = ref_xy[:,0]
-        self.y_ref = ref_xy[:,1]
-        self.n_lenslets = len(self.x_ref)
-        self.search_boxes = SearchBoxes(self.x_ref,self.y_ref,kcfg.search_box_half_width)
-        self.lenslet_focal_length_m = kcfg.lenslet_focal_length_m
-        self.pixel_size_m = kcfg.pixel_size_m
-        self.cam = camera
-        self.spots = self.cam.get_image()
-        self.x_centroids = self.x_ref.copy()
-        self.y_centroids = self.y_ref.copy()
-        self.x_slopes = np.zeros(self.search_boxes.n)
-        self.y_slopes = np.zeros(self.search_boxes.n)
-        self.total_intensity = np.zeros(self.search_boxes.n)
-        self.maximum_intensity = np.zeros(self.search_boxes.n)
-        self.minimum_intensity = np.zeros(self.search_boxes.n)
-        self.background_intensity = np.zeros(self.search_boxes.n)
-        self.active_lenslets = np.ones(self.n_lenslets)
-        self.n_iterations = kcfg.centroiding_iterations
-        self.filter_lenslets = kcfg.sensor_filter_lenslets
-        self.error = 0.0
-        self.tilt = 0.0
-        self.tip = 0.0
-        self.background_correction = kcfg.background_correction
-        # Boolean settings
-        self.estimate_background = kcfg.estimate_background
-        self.show_search_boxes = kcfg.show_search_boxes
-        self.show_slope_lines = kcfg.show_slope_lines
-        self.boolean_functions = []
-        self.boolean_functions.append((self.get_estimate_background,self.set_estimate_background,'Estimate background'))
-        self.boolean_functions.append((self.get_filter_lenslets,self.set_filter_lenslets,'Filter lenslets'))
-        self.boolean_functions.append((self.get_paused,self.set_paused,'Paused'))
-        self.boolean_functions.append((self.cam.get_opacity,self.cam.set_opacity,'Opacity'))
-        self.numerical_functions = []
-        self.numerical_functions.append((self.get_background_correction,self.set_background_correction,'Background correction',(-2**kcfg.bit_depth,2**kcfg.bit_depth,.5)))
-        self.numerical_functions = self.numerical_functions + self.search_boxes.numerical_functions
-        self.action_functions = []
-        self.action_functions.append((self.step,'Step'))
-        self.action_functions.append((self.auto_center,'Auto center'))
-        self.action_functions.append((self.record_reference,'Record reference'))
-        print 'Computing sensor maximum rate...'
-        self.max_rate = self.get_max_rate(50)
-        print 'Maximum rate is %0.2f Hz.'%self.max_rate
-
-    def set_active_lenslets(self):
-        #self.active_lenslets[:] = 0
-        #self.active_lenslets[np.where(self.maximum_intensity-self.minimum_intensity>kcfg.spots_threshold)[0]] = 1
-        if self.filter_lenslets:
-            self.active_lenslets[:] = 1
-            thresh = self.total_intensity.mean()-self.total_intensity.std()*3
-            self.active_lenslets[np.where(self.total_intensity<thresh)]=0
-
-    def get_filter_lenslets(self):
-        return self.filter_lenslets
-
-    def set_filter_lenslets(self,val):
-        self.filter_lenslets = val
-            
-    def get_error(self):
-        return self.error*1e6
-
-    def get_tilt(self):
-        return self.tilt*1000
-
-    def get_tip(self):
-        return self.tip*1000
+class Foo:
 
     def auto_center(self,window_spots=False,spot_half_width=5):
         self.pause()
@@ -953,40 +1357,6 @@ class Loop:
             command = self.mirror.command*(1-self.loss) - command
             self.mirror.command = command
             
-    def run_poke(self):
-        cmin = kcfg.poke_command_min
-        cmax = kcfg.poke_command_max
-        n_commands = kcfg.poke_n_command_steps
-        commands = np.linspace(cmin,cmax,n_commands)
-        self.sensor.pause()
-        self.mirror.pause()
-        n_lenslets = self.sensor.n_lenslets
-        n_actuators = self.mirror.n_actuators
-        x_mat = np.zeros((n_lenslets,n_actuators,n_commands))
-        y_mat = np.zeros((n_lenslets,n_actuators,n_commands))
-        for k_actuator in range(n_actuators):
-            for k_command in range(n_commands):
-                cur = commands[k_command]
-                print k_actuator,cur
-                self.mirror.set_actuator(k_actuator,cur)
-                self.sensor.step()
-                QApplication.processEvents()
-                x_mat[:,k_actuator,k_command] = self.sensor.x_slopes
-                y_mat[:,k_actuator,k_command] = self.sensor.y_slopes
-        self.mirror.flatten()
-        self.sensor.unpause()
-        self.mirror.unpause()
-        d_commands = np.mean(np.diff(commands))
-        d_x_mat = np.diff(x_mat,axis=2)
-        d_y_mat = np.diff(y_mat,axis=2)
-
-        x_response = np.mean(d_x_mat/d_commands,axis=2)
-        y_response = np.mean(d_y_mat/d_commands,axis=2)
-        poke = np.vstack((x_response,y_response))
-        poke_fn = prepend(kcfg.poke_filename,now_string())
-        np.savetxt(poke_fn,poke)
-        self.poke = Poke(poke)
-
     def get_n_ctrl_stored(self):
         try:
             return self.poke.n_ctrl_stored

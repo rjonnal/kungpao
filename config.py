@@ -46,15 +46,19 @@ estimate_background = True
 background_correction = +43.5
 search_box_half_width = 18
 
-active_search_box_color = (63,127,255,255)
+active_search_box_color = (127,127,127,127)
 inactive_search_box_color = (0,63,127,255)
 
-search_box_thickness = 2.0
-show_search_boxes = False
-show_slope_lines = False
+search_box_thickness = 3.0
+show_search_boxes = True
+show_slope_lines = True
 
-slope_line_thickness = 3.0
-slope_line_color = (200,0,0,64)
+slope_line_thickness = 5.0
+slope_line_color = (200,100,100,155)
+slope_line_magnification = 5e4
+
+zoom_width = 50
+zoom_height = 50
 
 single_spot_color = (255,63,63,255)
 single_spot_thickness = 2.0
@@ -64,7 +68,7 @@ sensor_filter_lenslets = False
 sensor_reconstruct_wavefront = True
 sensor_remove_tip_tilt = True
 
-mirror_update_rate = 500.0
+mirror_update_rate = 50.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'
