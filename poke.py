@@ -31,7 +31,7 @@ class Poke:
         self.ctrl_dict[key] = ctrl
         self.ctrl_key_list.append(key)
         self.n_ctrl_stored+=1
-        self.print_dict_info()
+        #self.print_dict_info()
         assert self.n_ctrl_stored==len(self.ctrl_dict.keys())
         assert self.n_ctrl_stored==len(self.ctrl_key_list)
 
@@ -43,7 +43,6 @@ class Poke:
         print self.ctrl_key_list
         print
 
-        
     def trim_ctrl_dict(self):
         if self.n_ctrl_stored<=kcfg.ctrl_dictionary_max_size:
             return
@@ -82,7 +81,6 @@ class Poke:
             poke = (poke.T - m_poke).T
 
         U,s,V = np.linalg.svd(poke)
-
 
         self.full_cond = (s[0]/s).max()
         self.cutoff_cond = s[0]/s[self.n_modes-1]

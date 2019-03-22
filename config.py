@@ -24,15 +24,17 @@ contrast_minimum = 200.0
 kungpao_root = '/home/rjonnal/code/kungpao'
 
 simulated_camera_image_directory = kungpao_root + '/data/spots/'
+
 reference_coordinates_filename = kungpao_root + '/etc/ref/coords.txt'
 #reference_coordinates_filename = kungpao_root + '/etc/ref/20190210211425_coords.txt'
+#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190321154921_coords.txt'
 
 reference_directory = kungpao_root + '/etc/ref/'
 reference_mask_filename = kungpao_root + '/etc/ref/reference_mask_small.txt'
 reference_n_measurements = 10
 
 poke_directory = kungpao_root + '/etc/ctrl/'
-poke_filename = poke_directory + '20160811102739_poke.txt'
+#poke_filename = poke_directory + '20160811102739_poke.txt'
 
 n_zernike_terms = 66
 
@@ -68,7 +70,7 @@ sensor_filter_lenslets = False
 sensor_reconstruct_wavefront = True
 sensor_remove_tip_tilt = True
 
-mirror_update_rate = 50.0
+mirror_update_rate = 20.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'
@@ -91,7 +93,7 @@ spots_threshold = 200.0
 ui_fps_fmt = '%0.2f Hz (UI)'
 sensor_fps_fmt = '%0.2f Hz (Sensor)'
 mirror_fps_fmt = '%0.2f Hz (Mirror)'
-wavefront_error_fmt = '%0.1f urad RMS (Error)'
+wavefront_error_fmt = '%0.1f nm RMS (Error)'
 tip_fmt = '%0.4f mrad (Tip)'
 tilt_fmt = '%0.4f mrad (Tilt)'
 
