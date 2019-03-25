@@ -20,7 +20,8 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                         np.ndarray[np.float_t,ndim=1] background_intensity,
                         estimate_background = True,
                         background_correction = 0.0,
-                        num_threads = 4):
+                        num_threads = 4,
+                        modify_spots_image = False):
 
     cdef np.int_t n_spots = len(sb_x1_vec)
     cdef np.int_t k
@@ -36,13 +37,23 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
     cdef np.float_t pixel
     cdef np.float_t edge_counter
     cdef np.int_t estimate_background_t
+    cdef np.int_t modify_spots_image_t
     cdef np.float_t background_correction_t
     cdef np.float_t counter
+
+    # if modify_spots_image:
+    #     modify_spots_image_t = 1
+    # else:
+    #     modify_spots_image_t = 0
     
-    if estimate_background:
-        estimate_background_t = 1
-    else:
-        estimate_background_t = 0
+    # if estimate_background:
+    #     estimate_background_t = 1
+    # else:
+    #     estimate_background_t = 0
+
+    modify_spots_image_t = int(modify_spots_image)
+    estimate_background_t = int(estimate_background)
+
     background_correction_t = float(background_correction)
     num_threads_t = int(num_threads)
     
@@ -78,7 +89,8 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                 pixel = float(spots_image[y,x])-(background+background_correction_t)
                 if pixel<0.0:
                     pixel = 0.0
-                #spots_image[y,x] = <np.int_t>pixel
+                if modify_spots_image_t:
+                    spots_image[y,x] = <np.int_t>pixel
                 xprod = xprod + pixel*x
                 yprod = yprod + pixel*y
                 intensity = intensity + pixel
@@ -87,7 +99,10 @@ cpdef compute_centroids(np.ndarray[np.int16_t,ndim=2] spots_image,
                 if pixel>imax:
                     imax=pixel
                 counter = counter + 1.0
-                
+
+        if xprod==0 or yprod==0:
+            print 'Warning: search box intensity low; skipping. Check background_correction.'
+            continue
         mean_intensity[k] = intensity/counter
         background_intensity[k] = background
         maximum_intensity[k] = imax
