@@ -20,20 +20,20 @@ bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-#kungpao_root = 'c:/code/kungpao'
-kungpao_root = '/home/rjonnal/code/kungpao'
+kungpao_root = 'c:/code/kungpao'
+#kungpao_root = '/home/rjonnal/code/kungpao'
 
 #simulated_camera_image_directory = kungpao_root + '/data/spots/'
 simulated_camera_image_directory = kungpao_root + '/data/spots_02/'
 
 #reference_coordinates_filename = kungpao_root + '/etc/ref/coords.txt'
 #reference_coordinates_filename = kungpao_root + '/etc/ref/20190210211425_coords.txt'
-#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190321154921_coords.txt'
+#reference_coordinates_filename = kungpao_root + '/etc/ref/20190321154921_coords.txt'
 
 # from new camera images:
-#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190325121505_coords.txt'
-#reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190325124529_coords.txt'
-reference_coordinates_filename = '/home/rjonnal/code/kungpao/etc/ref/20190325125140_coords.txt'
+#reference_coordinates_filename = kungpao_root + '/etc/ref/20190325121505_coords.txt'
+#reference_coordinates_filename = kungpao_root + '/etc/ref/20190325124529_coords.txt'
+reference_coordinates_filename = kungpao_root + '/etc/ref/20190325125140_coords.txt'
 
 reference_directory = kungpao_root + '/etc/ref/'
 reference_mask_filename = kungpao_root + '/etc/ref/reference_mask.txt'

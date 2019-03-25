@@ -941,8 +941,8 @@ if __name__=='__main__':
     #sys.exit(app.exec_())
     ####
 
-    #cam = cameras.SimulatedCamera()
-    cam = cameras.PylonCamera()
+    cam = cameras.SimulatedCamera()
+    #cam = cameras.PylonCamera()
 
     # look at a test image and make sure it agrees with kcfg settings
     im = cam.get_image()

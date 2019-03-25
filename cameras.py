@@ -2,7 +2,10 @@ import numpy as np
 import glob
 import config as kcfg
 import os,sys
-from pypylon import pylon
+try:
+    from pypylon import pylon
+except Exception as e:
+    print e
 
 
 class PylonCamera:
