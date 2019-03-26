@@ -398,13 +398,7 @@ class Loop(QObject):
         outfn = os.path.join(kcfg.poke_directory,'dummy_poke.txt')
         np.savetxt(outfn,dummy)
 
-
-
-        #DEBUG
-        
         self.sensor.moveToThread(self.sensor_thread)
-        #self.sensor.update()
-
         self.mirror.moveToThread(self.mirror_thread)
 
         self.sensor_thread.started.connect(self.sensor.update)
@@ -654,9 +648,6 @@ class ImageDisplay(QWidget):
         self.zoom_x2 = self.sx-1
         self.zoom_y1 = 0
         self.zoom_y2 = self.sy-1
-
-
-
         
     def real2slider(self,val):
         # convert a real value into a slider value
@@ -668,11 +659,9 @@ class ImageDisplay(QWidget):
     
     def set_cmax(self,slider_value):
         self.clim = (self.clim[0],self.slider2real(slider_value))
-        np.savetxt('.gui_settings/clim_%s.txt'%self.name,self.clim)
 
     def set_cmin(self,slider_value):
         self.clim = (self.slider2real(slider_value),self.clim[1])
-        np.savetxt('.gui_settings/clim_%s.txt'%self.name,self.clim)
         
     def show(self,data,boxes=None,lines=None):
         if self.autoscale:
@@ -797,8 +786,7 @@ class UI(QWidget):
         layout = QHBoxLayout()
         imax = 2**kcfg.bit_depth-1
         imin = 0
-        self.id_spots = ImageDisplay('spots',downsample=2,clim=None,colormap=kcfg.spots_colormap,image_min=imin,image_max=imax,draw_boxes=kcfg.show_search_boxes,draw_lines=kcfg.show_slope_lines,zoomable=True)
-        #self.id_spots = ImageDisplay('spots',downsample=2,clim=(50,1000),colormap=kcfg.spots_colormap,image_min=imin,image_max=imax,draw_boxes=kcfg.show_search_boxes,draw_lines=kcfg.show_slope_lines,zoomable=True)
+        self.id_spots = ImageDisplay('spots',downsample=2,clim=(50,1000),colormap=kcfg.spots_colormap,image_min=imin,image_max=imax,draw_boxes=kcfg.show_search_boxes,draw_lines=kcfg.show_slope_lines,zoomable=True)
         layout.addWidget(self.id_spots)
 
         self.id_mirror = ImageDisplay('mirror',downsample=1,clim=(-0.5,0.5),colormap=kcfg.mirror_colormap,image_min=-1.5,image_max=1.5,width=256,height=256)
