@@ -17,11 +17,12 @@ system_id = 'simulator'
 image_width_px = 1024
 image_height_px = 1024
 bit_depth = 12
+
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-#kungpao_root = 'c:/code/kungpao'
-kungpao_root = '/home/rjonnal/code/kungpao'
+kungpao_root = 'c:/code/kungpao'
+#kungpao_root = '/home/rjonnal/code/kungpao'
 
 #simulated_camera_image_directory = kungpao_root + '/data/spots/'
 simulated_camera_image_directory = kungpao_root + '/data/spots_02/'
