@@ -24,7 +24,8 @@ import copy
 from zernike import Reconstructor
 import cProfile
 
-
+from alpao.PyAcedev5 import *
+from ctypes import CDLL,c_void_p
 
 class Mutex(QMutex):
 
@@ -318,13 +319,72 @@ class Sensor(QObject):
         np.savetxt(outfn,refxy,fmt='%0.2f')
         self.unpause()
         time.sleep(1)
-    
 
+
+class MirrorController(object):
+    def __init__(self):
+        self.cmax = kcfg.mirror_command_max
+        self.cmin = kcfg.mirror_command_min
+        self.command = np.zeros(kcfg.mirror_n_actuators,dtype=np.double)
+        self.clipped = False
+        
+    def clip(self):
+        self.clipped = (self.command.max()>=self.cmax or self.command.min()<=self.cmin)
+        if self.clipped:
+            self.command = np.clip(self.command,self.cmin,self.cmax)
+                
+    def set(self,vec):
+        self.command[:] = vec[:]
+        
+    def send(self):
+        return 1
+        
+class MirrorControllerCtypes(MirrorController):
+    def __init__(self):
+        super(MirrorControllerCtypes,self).__init__()
+        self.acedev5 = CDLL("acedev5")
+        self.mirror_id = self.acedev5.acedev5Init(0)
+        self.command = np.zeros(kcfg.mirror_n_actuators,dtype=np.double)
+        self.command_ptr = self.command.ctypes.data_as(c_void_p)
+        self.send()
+        
+    def set(self,vec):
+        assert len(vec)==len(self.command)
+        self.command[:] = vec[:]
+
+    def send(self):
+        self.clip()
+        return self.acedev5.acedev5Send(self.mirror_id,self.command_ptr)
+        
+        
+class MirrorControllerPython(MirrorController):
+    def __init__(self):
+    
+        super(MirrorControllerPython,self).__init__()        
+        self.mirror_id = kcfg.mirror_id
+        self.dm = PyAcedev5(self.mirror_id)
+        self.command = self.dm.values
+        self.send()
+        
+    def set(self,vec):
+        self.dm.values[:] = vec[:]
+        
+    def send(self):
+        self.clip()
+        return self.dm.Send()
+        
 class Mirror(QObject):
     finished = pyqtSignal(QObject)
     
     def __init__(self):
         super(Mirror,self).__init__()
+        
+        try:
+            self.controller = MirrorControllerPython()
+        except Exception as e:
+            print e
+            self.controller = MirrorControllerCtypes()
+        
         
         self.mask = np.loadtxt(kcfg.mirror_mask_filename)
         self.n = kcfg.mirror_n_actuators
@@ -334,8 +394,8 @@ class Mirror(QObject):
         self.settling_time = kcfg.mirror_settling_time_s
         self.update_rate = kcfg.mirror_update_rate
         
-        self.command = np.zeros(self.n)
-
+        self.flatten()
+        
         self.timer = QTimer()
         self.timer.timeout.connect(self.update)
         self.timer.start(1.0/self.update_rate*1000.0)
@@ -359,21 +419,25 @@ class Mirror(QObject):
         self.paused = False
 
     def send(self):
-        mirror_mutex.lock()
-        command = np.clip(self.command,self.command_min,self.command_max)
-        # SEND TO MIRROR HERE
-        mirror_mutex.unlock()
+        self.controller.send()
 
     def flatten(self):
         mirror_mutex.lock()
-        self.command[:] = self.flat[:]
+        self.controller.set(self.flat)
         mirror_mutex.unlock()
         self.send()
 
     def set_actuator(self,index,value):
         mirror_mutex.lock()
-        self.command[index] = value
+        self.controller.command[index] = value
         mirror_mutex.unlock()
+        self.send()
+        
+    def set_command(self,vec):
+        self.controller.set(vec)
+        
+    def get_command(self):
+        return self.controller.command
         
         
 
@@ -463,8 +527,8 @@ class Loop(QObject):
                 ys = self.sensor.y_slopes[np.where(self.active_lenslets)[0]]
                 slope_vec = np.hstack((xs,ys))
                 command = self.gain * np.dot(self.poke.ctrl,slope_vec)
-                command = self.mirror.command*(1-self.loss) - command
-                self.mirror.command[:] = command[:]
+                command = self.mirror.get_command()*(1-self.loss) - command
+                self.mirror.set_command(command)
                 
             self.finished.emit()
             sensor_mutex.unlock()
@@ -675,6 +739,10 @@ class ImageDisplay(QWidget):
         np.savetxt('.gui_settings/clim_%s.txt'%self.name,self.clim)
         
     def show(self,data,boxes=None,lines=None):
+    
+#        if self.name=='mirror':
+#            print data[6,6]
+            
         if self.autoscale:
             clim = (data.min(),data.max())
         else:
@@ -912,7 +980,7 @@ class UI(QWidget):
             self.id_spots.show(sensor.image,boxes=boxes,lines=lines)
 
             mirror_map = np.zeros(mirror.mask.shape)
-            mirror_map[np.where(mirror.mask)] = mirror.command[:]
+            mirror_map[np.where(mirror.mask)] = mirror.get_command()[:]
             
             self.id_mirror.show(mirror_map)
 
@@ -947,8 +1015,12 @@ if __name__=='__main__':
     #sys.exit(app.exec_())
     ####
 
-    #cam = cameras.SimulatedCamera()
-    cam = cameras.PylonCamera()
+    try:
+        cam = cameras.PylonCamera()
+    except Exception as e:
+        print e
+        print 'Using simulated camera'
+        cam = cameras.SimulatedCamera()
 
     # look at a test image and make sure it agrees with kcfg settings
     im = cam.get_image()

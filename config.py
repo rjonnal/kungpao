@@ -14,6 +14,9 @@
 # associated with this installation of kungpao:
 #systemID = 'AO-OCT-2G'
 system_id = 'simulator'
+
+mirror_id = 'alpaoDM97-15-010'
+
 image_width_px = 1024
 image_height_px = 1024
 bit_depth = 12
