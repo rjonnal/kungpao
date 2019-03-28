@@ -975,6 +975,8 @@ class UI(QWidget):
         self.show()
 
     def init_UI(self):
+        self.setWindowIcon(QIcon('./icons/kungpao.png'))
+        self.setWindowTitle('kungpao')
         layout = QHBoxLayout()
         imax = 2**kcfg.bit_depth-1
         imin = 0
