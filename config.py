@@ -24,8 +24,8 @@ bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-kungpao_root = 'c:/code/kungpao'
-#kungpao_root = '/home/rjonnal/code/kungpao'
+#kungpao_root = 'c:/code/kungpao'
+kungpao_root = '/home/rjonnal/code/kungpao'
 
 #simulated_camera_image_directory = kungpao_root + '/data/spots/'
 simulated_camera_image_directory = kungpao_root + '/data/spots_02/'
@@ -43,10 +43,13 @@ reference_directory = kungpao_root + '/etc/ref/'
 reference_mask_filename = kungpao_root + '/etc/ref/reference_mask.txt'
 reference_n_measurements = 10
 
+logging_directory = kungpao_root + '/log'
+
 poke_directory = kungpao_root + '/etc/ctrl/'
 poke_filename = poke_directory + '20190325125646_poke.txt'
 
 n_zernike_terms = 66
+zernike_dioptric_equivalent = 1.5
 
 lenslet_pitch_m = 300e-6
 lenslet_focal_length_m = 20.0e-3
@@ -55,8 +58,7 @@ beam_diameter_m = 10e-3
 interface_scale_factor = 0.5
 wavelength_m = 840e-9
 estimate_background = True
-#background_correction = 43
-background_correction = 0
+background_correction = -100
 search_box_half_width = 12
 
 active_search_box_color = (127,16,16,255)
@@ -72,7 +74,7 @@ slope_line_magnification = 5e4
 
 spots_colormap = 'gray'
 wavefront_colormap = 'jet'
-mirror_colormap = 'bone'
+mirror_colormap = 'mirror'
 
 zoom_width = 50
 zoom_height = 50
@@ -85,18 +87,19 @@ sensor_filter_lenslets = False
 sensor_reconstruct_wavefront = True
 sensor_remove_tip_tilt = True
 
-mirror_update_rate = 200.0
+mirror_update_rate = 20.0
 
 mirror_n_actuators = 97
 mirror_flat_filename = kungpao_root + '/etc/dm/flat.txt'
 mirror_mask_filename = kungpao_root + '/etc/dm/mirror_mask.txt'
-mirror_command_max = 1.0
-mirror_command_min = -1.0
+mirror_command_max = 0.3
+mirror_command_min = -0.3
 mirror_settling_time_s = 0.001
 
-poke_command_max = 0.5
-poke_command_min = -0.5
+poke_command_max = 0.05
+poke_command_min = -0.05
 poke_n_command_steps = 5
+
 ctrl_dictionary_max_size = 10
 
 loop_n_control_modes = 50
@@ -104,7 +107,7 @@ loop_gain = 0.3
 loop_loss = 0.01
 
 #spots_threshold = 200.0
-spots_threshold = 0.0
+spots_threshold = 100.0
 
 ui_fps_fmt = '%0.2f Hz (UI)'
 sensor_fps_fmt = '%0.2f Hz (Sensor)'
@@ -112,7 +115,7 @@ mirror_fps_fmt = '%0.2f Hz (Mirror)'
 wavefront_error_fmt = '%0.1f nm RMS (Error)'
 tip_fmt = '%0.4f mrad (Tip)'
 tilt_fmt = '%0.4f mrad (Tilt)'
-
+cond_fmt = '%0.2f (Condition)'
 centroiding_num_threads = 1
 
 #search_box_half_width_max = 30

@@ -112,4 +112,5 @@ class Poke:
         print 'SVD %d modes %0.4e'%(self.n_modes,self.cutoff_cond)
         self.store_ctrl(mask,self.ctrl)
         self.trim_ctrl_dict()
-
+        self.print_dict_info()
+        print

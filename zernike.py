@@ -352,13 +352,18 @@ class Reconstructor:
         
         for j in range(self.N):
             n,m = Z.j2nm(j)
+            print j,n,m
             h = Z.get_surface(n,m,refx,refy,kind='h')
             dx = Z.get_surface(n,m,refx,refy,kind='dx')
             dy = Z.get_surface(n,m,refx,refy,kind='dy')
             hmat.append(h)
             dxmat.append(dx)
             dymat.append(dy)
-
+            if j==4:
+                self.defocus_h = h
+                self.defocus_dx = dx
+                self.defocus_dy = dy
+        
     
         dxmat = np.array(dxmat)
         dymat = np.array(dymat)
