@@ -12,6 +12,7 @@
 *.log
 *.sql
 *.sqlite
+.simulator_cache/
 log/
 
 # OS generated files #
