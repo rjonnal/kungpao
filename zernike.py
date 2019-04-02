@@ -264,6 +264,10 @@ class Zernike:
 
         return matrix_out
 
+    def get_j_surface(self,j,X,Y,kind='h',mask=None):
+        n,m = self.j2nm(j)
+        return self.get_surface(n,m,X,Y,kind,mask)
+    
     def get_surface(self,n,m,X,Y,kind='h',mask=None):
         """Return a phase map specified by a Zernike order and azimuthal frequency.
 

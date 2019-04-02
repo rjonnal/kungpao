@@ -24,8 +24,8 @@ bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-kungpao_root = 'c:/code/kungpao'
-#kungpao_root = '/home/rjonnal/code/kungpao'
+#kungpao_root = 'c:/code/kungpao'
+kungpao_root = '/home/rjonnal/code/kungpao'
 
 #simulated_camera_image_directory = kungpao_root + '/data/spots/'
 simulated_camera_image_directory = kungpao_root + '/data/spots_02/'
@@ -37,7 +37,11 @@ simulated_camera_image_directory = kungpao_root + '/data/spots_02/'
 # from new camera images:
 #reference_coordinates_filename = kungpao_root + '/etc/ref/20190325121505_coords.txt'
 #reference_coordinates_filename = kungpao_root + '/etc/ref/20190325124529_coords.txt'
-reference_coordinates_filename = kungpao_root + '/etc/ref/20190325125140_coords.txt'
+#reference_coordinates_filename = kungpao_root + '/etc/ref/20190325125140_coords.txt'
+
+# from simulation:
+#reference_coordinates_filename = kungpao_root + '/etc/ref/20190402101814_coords.txt'
+reference_coordinates_filename = kungpao_root + '/etc/ref/20190402102213_coords.txt'
 
 reference_directory = kungpao_root + '/etc/ref/'
 reference_mask_filename = kungpao_root + '/etc/ref/reference_mask.txt'
@@ -46,7 +50,11 @@ reference_n_measurements = 10
 logging_directory = kungpao_root + '/log'
 
 poke_directory = kungpao_root + '/etc/ctrl/'
-poke_filename = poke_directory + '20190325125646_poke.txt'
+#poke_filename = poke_directory + '20190325125646_poke.txt'
+#poke_filename = poke_directory + '20190401140632_poke.txt'
+poke_filename = poke_directory + '20190402103411_poke.txt'
+
+simulator_cache_directory = '.simulator_cache'
 
 n_zernike_terms = 66
 zernike_dioptric_equivalent = 1.5
