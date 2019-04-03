@@ -1019,7 +1019,11 @@ if __name__=='__main__':
 
     app = QApplication(sys.argv)
 
-    simulate = True
+    simulate = False
+	
+    if len(sys.argv)>1:
+        if sys.argv[1].lower()=='simulate':
+            simulate = True
 
     if simulate:
         sim = simulator.Simulator()

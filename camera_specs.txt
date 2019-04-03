@@ -1,7 +1,0 @@
-Sensor width: >10mm
-Sensor height: >10mm
-QE: 50%+ @ 800 nm
-Speed: 50+ fps
-Interface: USB 3.0 or USB 3.1 preferred
-Resolution: At least 500x500 pixels
-Bit depth: 
