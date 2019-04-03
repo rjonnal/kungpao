@@ -1,7 +1,6 @@
 import numpy as np
 import time
 import centroid
-import config as kcfg
 import simulator
 from poke import Poke
 import cameras
@@ -29,6 +28,16 @@ from poke_analysis import save_modes_chart
 from ctypes import CDLL,c_void_p
 from search_boxes import SearchBoxes
 from reference_generator import ReferenceGenerator
+
+simulate = False
+if len(sys.argv)>1:
+    if sys.argv[1].lower()=='simulate':
+        simulate = True
+
+if simulate:
+    import sim_config as kcfg
+else:
+    import config as kcfg
 
 try:
     from alpao.PyAcedev5 import *
@@ -103,11 +112,18 @@ class Sensor(QObject):
         self.iterative_centroiding_step = kcfg.iterative_centroiding_step
         self.filter_lenslets = kcfg.sensor_filter_lenslets
         self.estimate_background = kcfg.estimate_background
-        self.mask = np.loadtxt(kcfg.reference_mask_filename)
         self.reconstruct_wavefront = kcfg.sensor_reconstruct_wavefront
         self.remove_tip_tilt = kcfg.sensor_remove_tip_tilt
-        xy = np.loadtxt(kcfg.reference_coordinates_filename)
-        self.search_boxes = SearchBoxes(xy[:,0],xy[:,1],kcfg.search_box_half_width)
+        try:
+            # check to see if the camera object produced its own
+            # search boxes, and if not, use reference coordinates
+            self.search_boxes = camera.search_boxes
+            self.mask = camera.lenslet_mask
+        except Exception as e:
+            xy = np.loadtxt(kcfg.reference_coordinates_filename)
+            self.search_boxes = SearchBoxes(xy[:,0],xy[:,1],kcfg.search_box_half_width)
+            self.mask = np.loadtxt(kcfg.reference_mask_filename)
+        
         self.x0 = np.zeros(self.search_boxes.x.shape)
         self.y0 = np.zeros(self.search_boxes.y.shape)
         
@@ -427,13 +443,8 @@ class Loop(QObject):
         outfn = os.path.join(kcfg.poke_directory,'dummy_poke.txt')
         np.savetxt(outfn,dummy)
 
-
-
         #DEBUG
-        
         self.sensor.moveToThread(self.sensor_thread)
-        #self.sensor.update()
-
         self.mirror.moveToThread(self.mirror_thread)
 
         self.sensor_thread.started.connect(self.sensor.update)
@@ -444,7 +455,6 @@ class Loop(QObject):
         self.pause_signal.connect(self.mirror.pause)
         self.unpause_signal.connect(self.sensor.unpause)
         self.unpause_signal.connect(self.mirror.unpause)
-        
         self.poke = None
         self.closed = False
         
@@ -452,9 +462,11 @@ class Loop(QObject):
             self.load_poke(kcfg.poke_filename)
         except Exception as e:
             self.load_poke()
+            
         self.gain = kcfg.loop_gain
         self.loss = kcfg.loop_loss
         self.paused = False
+        
 
     def has_poke(self):
         return self.poke is not None
@@ -517,19 +529,16 @@ class Loop(QObject):
         py,px = poke.shape
         expected_py = self.sensor.n_lenslets*2
         expected_px = self.mirror.n_actuators
+        dummy = np.ones((expected_py,expected_px))
         
         try:
-            assert py==expected_py
+            assert (py==expected_py and px==expected_px)
         except AssertionError as ae:
-            error_message('Poke matrix has %d rows, but %d expected.'%(py,expected_py))
-            return
-        try:
-            assert px==expected_px
-        except AssertionError as ae:
-            error_message('Poke matrix has %d columns, but %d expected.'%(px,expected_px))
-            return
-        
+            error_message('Poke matrix has shape (%d,%d), but (%d,%d) was expected. Using dummy matrix.'%(py,px,expected_py,expected_px))
+            poke = dummy
+            
         self.poke = Poke(poke)
+
         sensor_mutex.unlock()
         mirror_mutex.unlock()
 
@@ -860,7 +869,11 @@ class UI(QWidget):
         layout.addWidget(self.id_spots)
 
         self.id_mirror = ImageDisplay('mirror',downsample=1,clim=(-0.5,0.5),colormap=kcfg.mirror_colormap,image_min=kcfg.mirror_command_min,image_max=kcfg.mirror_command_max,width=256,height=256)
-        self.id_wavefront = ImageDisplay('wavefront',downsample=1,clim=(-1.0e-8,1.0e-8),colormap=kcfg.wavefront_colormap,image_min=-1.0e-5,image_max=1.0e-5,width=256,height=256)
+        beam_d = kcfg.beam_diameter_m
+        errmax = beam_d*1e-4
+        self.id_wavefront = ImageDisplay('wavefront',downsample=1,clim=(-1.0e-8,1.0e-8),colormap=kcfg.wavefront_colormap,image_min=-errmax,image_max=errmax,width=256,height=256)
+
+        
         column_1 = QVBoxLayout()
         column_1.setAlignment(Qt.AlignTop)
         column_1.addWidget(self.id_mirror)
@@ -1019,12 +1032,6 @@ if __name__=='__main__':
 
     app = QApplication(sys.argv)
 
-    simulate = False
-	
-    if len(sys.argv)>1:
-        if sys.argv[1].lower()=='simulate':
-            simulate = True
-
     if simulate:
         sim = simulator.Simulator()
         
@@ -1047,14 +1054,15 @@ if __name__=='__main__':
         assert width==kcfg.image_width_px
     except Exception as e:
         print e
-    
-    try:
-        xy = np.loadtxt(kcfg.reference_coordinates_filename)
-    except Exception as e:
-        mask = np.loadtxt(kcfg.reference_mask_filename)
-        rg = ReferenceGenerator(cam,mask)
-        rg.make_coords()
-        sys.exit()
+
+    if not simulate:
+        try:
+            xy = np.loadtxt(kcfg.reference_coordinates_filename)
+        except Exception as e:
+            mask = np.loadtxt(kcfg.reference_mask_filename)
+            rg = ReferenceGenerator(cam,mask)
+            rg.make_coords()
+            sys.exit()
 
     sensor = Sensor(cam)
     

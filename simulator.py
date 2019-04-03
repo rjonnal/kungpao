@@ -1,6 +1,6 @@
 import numpy as np
 import time
-import config as kcfg
+import sim_config as kcfg
 import sys
 from PyQt5.QtCore import (QThread, QTimer, pyqtSignal, Qt, QPoint, QLine,
                           QMutex, QObject, pyqtSlot)
@@ -37,10 +37,10 @@ class Simulator(QObject):
         self.pixel_size_m = kcfg.pixel_size_m
 
         # compute single spot
-        pitch = kcfg.lenslet_pitch_m
+        self.lenslet_pitch_m = kcfg.lenslet_pitch_m
         self.f = kcfg.lenslet_focal_length_m
-        L = kcfg.wavelength_m
-        fwhm_px = (1.22*L*self.f/pitch)/self.pixel_size_m
+        self.L = kcfg.wavelength_m
+        fwhm_px = (1.22*self.L*self.f/self.lenslet_pitch_m)/self.pixel_size_m
         
         self.disc = np.zeros((self.sy,self.sx))
         self.disc_diameter = 110
@@ -54,19 +54,9 @@ class Simulator(QObject):
         
         self.disc[np.where(d<=self.disc_diameter)] = 1.0
         
-        if False:
-            # verify that the spot size is about right
-            spot = np.abs(np.fft.fftshift(np.fft.fft2(self.disc)))
-            py,px = np.unravel_index(np.argmax(spot),spot.shape)
-            prof = spot[py,:]
-            print len(np.where(prof>prof.max()/2.0)[0])
-            plt.plot(prof)
-            plt.show()
-            sys.exit()
-            
-        
-        d = kcfg.beam_diameter_m
-        self.beam_radius = d/2.0
+
+        self.beam_diameter_m = kcfg.beam_diameter_m
+        self.beam_radius_m = self.beam_diameter_m/2.0
         self.X = np.arange(self.sx,dtype=np.float)*self.pixel_size_m
         self.Y = np.arange(self.sy,dtype=np.float)*self.pixel_size_m
         self.X = self.X-self.X.mean()
@@ -76,7 +66,37 @@ class Simulator(QObject):
 
         self.RR = np.sqrt(self.XX**2+self.YY**2)
         self.mask = np.zeros(self.RR.shape)
-        self.mask[np.where(self.RR<=self.beam_radius)] = 1.0
+        self.mask[np.where(self.RR<=self.beam_radius_m)] = 1.0
+
+
+        use_partially_illuminated_lenslets = True
+        if use_partially_illuminated_lenslets:
+            d_lenslets = int(np.ceil(self.beam_diameter_m/self.lenslet_pitch_m))
+        else:
+            d_lenslets = int(np.floor(self.beam_diameter_m/self.lenslet_pitch_m))
+
+        rad = float(d_lenslets)/2.0
+
+        xx,yy = np.meshgrid(np.arange(d_lenslets),np.arange(d_lenslets))
+
+        xx = xx - float(d_lenslets-1)/2.0
+        yy = yy - float(d_lenslets-1)/2.0
+
+        d = np.sqrt(xx**2+yy**2)
+
+        self.lenslet_mask = np.zeros(xx.shape,dtype=np.uint8)
+        self.lenslet_mask[np.where(d<=rad)] = 1
+        self.n_lenslets = int(np.sum(self.lenslet_mask))
+
+        self.x_lenslet_coords = xx*self.lenslet_pitch_m/self.pixel_size_m+self.sx/2.0
+        self.y_lenslet_coords = yy*self.lenslet_pitch_m/self.pixel_size_m+self.sy/2.0
+        in_pupil = np.where(self.lenslet_mask)
+        self.x_lenslet_coords = self.x_lenslet_coords[in_pupil]
+        self.y_lenslet_coords = self.y_lenslet_coords[in_pupil]
+        self.search_boxes = SearchBoxes(self.x_lenslet_coords,self.y_lenslet_coords,kcfg.search_box_half_width)
+        
+        plt.plot(self.x_lenslet_coords,self.y_lenslet_coords,'ks')
+        plt.show()
         
         self.mirror_mask = np.loadtxt(kcfg.mirror_mask_filename)
         self.n_actuators = int(np.sum(self.mirror_mask))
@@ -132,14 +152,6 @@ class Simulator(QObject):
         self.new_error_sigma = np.ones(self.n_zernike_terms)*10
         self.new_error_sigma[:3] = 0.0
         
-        # load reference information
-        try:
-            xy = np.loadtxt(kcfg.reference_coordinates_filename)
-        except Exception as e:
-            print e
-            sys.exit('Simulation mode needs a reference coordinate filename.')
-
-        self.search_boxes = SearchBoxes(xy[:,0],xy[:,1],kcfg.search_box_half_width)
         self.update()
         self.paused = False
 
@@ -154,7 +166,8 @@ class Simulator(QObject):
 
     def flatten(self):
         self.command[:] = 0.0
-
+        self.update()
+        
     def get_command(self):
         return self.command
 

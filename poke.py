@@ -5,7 +5,9 @@ import time
 class Poke:
     def __init__(self,poke_matrix):
         self.poke = poke_matrix
-        self.n_modes = kcfg.loop_n_control_modes
+        poke_rows = poke_matrix.shape[1]
+        self.n_modes = min(kcfg.loop_n_control_modes,poke_rows)
+        
         self.n_ctrl_stored = 0
         self.ctrl_dict = {}
         self.ctrl_key_list = []
@@ -81,9 +83,9 @@ class Poke:
             poke = (poke.T - m_poke).T
 
         U,s,V = np.linalg.svd(poke)
-
         self.full_cond = (s[0]/s).max()
         self.cutoff_cond = s[0]/s[self.n_modes-1]
+        
         # zero upper modes
         if self.n_modes<n_actuators:
             s[self.n_modes:] = 0
@@ -94,6 +96,7 @@ class Poke:
         term3 = U.T
         ctrlmat = np.dot(np.dot(term1,term2),term3)
         dt = time.time()-t0
+
 
         sanity_check = False
         if sanity_check:
