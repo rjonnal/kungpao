@@ -24,8 +24,8 @@ bit_depth = 12
 contrast_maximum = 2000.0
 contrast_minimum = 200.0
 
-#kungpao_root = 'c:/code/kungpao'
-kungpao_root = '/home/rjonnal/code/kungpao'
+kungpao_root = 'c:/code/kungpao'
+#kungpao_root = '/home/rjonnal/code/kungpao'
 
 reference_directory = kungpao_root + '/etc/ref/'
 

@@ -1,3 +1,8 @@
+import numpy as np
+import config as kcfg
+import os,sys
+from tools import now_string
+
 class ReferenceGenerator:
     def __init__(self,camera,mask,x_offset=0.0,y_offset=0.0,spot_half_width=5,window_spots=False):
         self.cam = camera
