@@ -95,8 +95,8 @@ class Simulator(QObject):
         self.y_lenslet_coords = self.y_lenslet_coords[in_pupil]
         self.search_boxes = SearchBoxes(self.x_lenslet_coords,self.y_lenslet_coords,kcfg.search_box_half_width)
         
-        plt.plot(self.x_lenslet_coords,self.y_lenslet_coords,'ks')
-        plt.show()
+        #plt.plot(self.x_lenslet_coords,self.y_lenslet_coords,'ks')
+        #plt.show()
         
         self.mirror_mask = np.loadtxt(kcfg.mirror_mask_filename)
         self.n_actuators = int(np.sum(self.mirror_mask))
@@ -149,7 +149,7 @@ class Simulator(QObject):
             self.zernike_basis = np.array(zernike_basis)
             np.save(zfn,self.zernike_basis)
 
-        self.new_error_sigma = np.ones(self.n_zernike_terms)*10
+        self.new_error_sigma = np.ones(self.n_zernike_terms)*1000
         self.new_error_sigma[:3] = 0.0
         
         self.update()

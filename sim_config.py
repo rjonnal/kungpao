@@ -17,8 +17,8 @@
 system_id = 'aossffoct'
 mirror_id = 'alpaoDM97-15-010'
 
-image_width_px = 1024
-image_height_px = 1024
+image_width_px = 512
+image_height_px = 512
 bit_depth = 12
 
 contrast_maximum = 2000.0
@@ -34,17 +34,17 @@ reference_n_measurements = 10
 logging_directory = kungpao_root + '/log'
 
 poke_directory = kungpao_root + '/etc/ctrl/'
-poke_filename = poke_directory + '20190403124557_poke.txt'
+poke_filename = poke_directory + '20190514104827_poke.txt'
 
 simulator_cache_directory = '.simulator_cache'
 
 n_zernike_terms = 66
 zernike_dioptric_equivalent = 1.5
 
-lenslet_pitch_m = 300e-6
+lenslet_pitch_m = 500e-6
 lenslet_focal_length_m = 20.0e-3
-pixel_size_m = 11e-6
-beam_diameter_m = 4e-3
+pixel_size_m = 22e-6
+beam_diameter_m = 6.5e-3
 
 interface_scale_factor = 0.5
 wavelength_m = 840e-9
