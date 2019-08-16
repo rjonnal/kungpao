@@ -166,7 +166,7 @@ class Sensor(QObject):
                 
         self.finished.emit()
         self.frame_timer.tick()
-
+    
     @pyqtSlot()
     def pause(self):
         print 'sensor paused'
@@ -345,17 +345,21 @@ class Mirror(QObject):
         super(Mirror,self).__init__()
         
         try:
+            print 'Forcing simulated mirror!'
+            foo = bar
             self.controller = MirrorControllerPython()
         except Exception as e:
-            print e
+            print 'Mirror python initialization failed:',e
             try:
+                print 'Forcing simulated mirror!'
+                foo = bar
                 self.controller = MirrorControllerCtypes()
+                print 'Mirror c initialization succeeded.'
             except Exception as e:
                 print e
                 print 'No mirror driver found. Using virtual mirror.'
                 self.controller = MirrorController()
             
-        
         self.mirror_mask = np.loadtxt(kcfg.mirror_mask_filename)
         self.n_actuators = kcfg.mirror_n_actuators
         self.flat = np.loadtxt(kcfg.mirror_flat_filename)
@@ -363,7 +367,6 @@ class Mirror(QObject):
         self.command_min = kcfg.mirror_command_min
         self.settling_time = kcfg.mirror_settling_time_s
         self.update_rate = kcfg.mirror_update_rate
-        
         self.flatten()
         
         self.timer = QTimer()
@@ -1074,5 +1077,4 @@ if __name__=='__main__':
     loop = Loop(sensor,mirror)
     ui = UI(loop)
     loop.start()
-
     sys.exit(app.exec_())
